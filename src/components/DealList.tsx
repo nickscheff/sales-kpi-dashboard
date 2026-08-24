@@ -23,7 +23,7 @@ export function DealList({ deals, onChange }: Props) {
   const addDeal = () => onChange([...deals, { id: newId(), company: '', revenue: 0 }])
 
   return (
-    <Card title="Deal-Liste" subtitle="Ist-Umsatz = Summe aller Deals">
+    <Card title="Deal-Liste" subtitle="Ist-Umsatz = Summe aller Deals" className="span-2">
       <table className="table">
         <thead>
           <tr>

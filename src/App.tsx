@@ -1,12 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { DailyActivityPanel } from './components/DailyActivityPanel'
 import { DealList } from './components/DealList'
-import { FunnelBreakdown } from './components/FunnelBreakdown'
-import { HistoryPanel } from './components/HistoryPanel'
-import { KpiOverview } from './components/KpiOverview'
-import { QuarterYearPanel } from './components/QuarterYearPanel'
-import { SettingsPanel } from './components/SettingsPanel'
+import { MonthSetup } from './components/MonthSetup'
+import { PaceStatus } from './components/PaceStatus'
+import { PipelinePanel } from './components/PipelinePanel'
+import { ProgressOverview } from './components/ProgressOverview'
 import { StatusBadge } from './components/StatusBadge'
-import { StretchGoals } from './components/StretchGoals'
 import {
   getAchievementPct,
   getActualRevenue,
@@ -15,17 +14,19 @@ import {
   getFunnel,
   getGrossTotal,
   getMissingRevenue,
+  getPaceStatus,
   getQuarterSum,
   getRecordStatus,
   getStretchScenarios,
   getYearSum,
 } from './lib/calculations'
 import { useDashboardData } from './state/useDashboardData'
-import type { Deal, HistoryEntry, Settings } from './types'
+import type { Deal, HistoryEntry, PipelineEntry, Settings } from './types'
 import './App.css'
 
 function App() {
   const { data, status, errorMessage, update } = useDashboardData()
+  const [paceLevel, setPaceLevel] = useState(1)
 
   const derived = useMemo(() => {
     if (!data) return null
@@ -63,8 +64,25 @@ function App() {
       funnel: getFunnel(scenario.requiredRevenue, data.currentMonth.settings),
     }))
 
-    return { actualRevenue, commission, commissionTier, grossTotal, achievementPct, missingRevenue, record, quarterSum, yearSum, scenarios, funnelItems }
-  }, [data])
+    const paceScenario = scenarios.find((scenario) => scenario.level === paceLevel) ?? scenarios[0]
+    const paceFunnel = getFunnel(paceScenario.requiredRevenue, data.currentMonth.settings)
+    const pace = getPaceStatus(paceFunnel, data.currentMonth)
+
+    return {
+      actualRevenue,
+      commission,
+      commissionTier,
+      grossTotal,
+      achievementPct,
+      missingRevenue,
+      record,
+      quarterSum,
+      yearSum,
+      scenarios,
+      funnelItems,
+      pace,
+    }
+  }, [data, paceLevel])
 
   if (!data || !derived) {
     return (
@@ -82,6 +100,12 @@ function App() {
 
   const updateDeals = (deals: Deal[]) =>
     update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, deals } }))
+
+  const updatePipeline = (pipeline: PipelineEntry[]) =>
+    update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, pipeline } }))
+
+  const updateDecisionCallsMade = (decisionCallsMade: number) =>
+    update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, decisionCallsMade } }))
 
   const updateHistory = (history: HistoryEntry[]) => update((prev) => ({ ...prev, history }))
 
@@ -104,29 +128,41 @@ function App() {
       {status === 'error' && errorMessage && <p className="error-banner">{errorMessage}</p>}
 
       <main className="app-grid">
-        <SettingsPanel currentMonth={data.currentMonth} onChangeMonthYear={updateMonthYear} onChangeSettings={updateSettings} />
-        <DealList deals={data.currentMonth.deals} onChange={updateDeals} />
-        <KpiOverview
-          actualRevenue={derived.actualRevenue}
+        <ProgressOverview
+          monthActual={derived.actualRevenue}
+          monthTarget={data.currentMonth.settings.monthlyTarget}
+          quarterLabel={data.quarterTarget.quarterLabel}
+          quarterActual={derived.quarterSum.sum}
+          quarterTarget={data.quarterTarget.target}
+          yearLabel={data.yearTarget.year}
+          yearActual={derived.yearSum.sum}
+          yearTarget={data.yearTarget.target}
           commission={derived.commission}
-          commissionTier={derived.commissionTier}
           grossTotal={derived.grossTotal}
-          achievementPct={derived.achievementPct}
-          missingRevenue={derived.missingRevenue}
+          commissionTier={derived.commissionTier}
           record={derived.record}
         />
-        <QuarterYearPanel
-          quarterTarget={data.quarterTarget}
-          yearTarget={data.yearTarget}
-          quarterSum={derived.quarterSum}
-          yearSum={derived.yearSum}
-          onChangeQuarterTarget={updateQuarterTarget}
-          onChangeYearTarget={updateYearTarget}
-        />
-        <HistoryPanel history={data.history} onChange={updateHistory} />
-        <StretchGoals scenarios={derived.scenarios} />
-        <FunnelBreakdown items={derived.funnelItems} />
+
+        <DailyActivityPanel decisionCallsMade={data.currentMonth.decisionCallsMade} onChange={updateDecisionCallsMade} />
+        <PaceStatus level={paceLevel} onChangeLevel={setPaceLevel} pace={derived.pace} />
+
+        <PipelinePanel pipeline={data.currentMonth.pipeline} onChange={updatePipeline} />
+        <DealList deals={data.currentMonth.deals} onChange={updateDeals} />
       </main>
+
+      <MonthSetup
+        currentMonth={data.currentMonth}
+        onChangeMonthYear={updateMonthYear}
+        onChangeSettings={updateSettings}
+        quarterTarget={data.quarterTarget}
+        yearTarget={data.yearTarget}
+        onChangeQuarterTarget={updateQuarterTarget}
+        onChangeYearTarget={updateYearTarget}
+        history={data.history}
+        onChangeHistory={updateHistory}
+        scenarios={derived.scenarios}
+        funnelItems={derived.funnelItems}
+      />
     </div>
   )
 }

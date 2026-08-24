@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadData, saveData } from '../lib/api'
-import { createDefaultData } from '../lib/defaultData'
+import { createDefaultData, normalizeDashboardData } from '../lib/defaultData'
 import type { DashboardData } from '../types'
 
 export type SyncStatus = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
@@ -19,7 +19,7 @@ export function useDashboardData() {
     loadData()
       .then((loaded) => {
         if (cancelled) return
-        setData(loaded ?? createDefaultData())
+        setData(normalizeDashboardData(loaded))
         setStatus('idle')
       })
       .catch((err: unknown) => {

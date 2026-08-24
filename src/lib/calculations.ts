@@ -1,4 +1,4 @@
-import type { Deal, HistoryEntry, Settings } from '../types'
+import type { CurrentMonth, Deal, HistoryEntry, PipelineEntry, PipelineLabel, Settings } from '../types'
 
 /** 1. Provision & Brutto */
 
@@ -177,15 +177,20 @@ export interface FunnelStage {
 
 export interface Funnel {
   targetRevenue: number
+  deals: FunnelStage
+  heldMeetings: FunnelStage
+  bookedMeetings: FunnelStage
+  decisionCalls: FunnelStage
+  /** Gleiche vier Stufen in Anzeige-Reihenfolge, für die Trichter-Tabelle. */
   stages: FunnelStage[]
 }
 
 export function getFunnel(targetRevenue: number, settings: Settings): Funnel {
-  const deals = settings.ticketSize > 0 ? targetRevenue / settings.ticketSize : 0
-  const heldMeetings = settings.closingRate > 0 ? deals / (settings.closingRate / 100) : 0
+  const dealsCount = settings.ticketSize > 0 ? targetRevenue / settings.ticketSize : 0
+  const heldMeetingsCount = settings.closingRate > 0 ? dealsCount / (settings.closingRate / 100) : 0
   const noShowFactor = 1 - settings.noShowRate / 100
-  const bookedMeetings = noShowFactor > 0 ? heldMeetings / noShowFactor : 0
-  const decisionCalls = settings.bookingRate > 0 ? bookedMeetings / (settings.bookingRate / 100) : 0
+  const bookedMeetingsCount = noShowFactor > 0 ? heldMeetingsCount / noShowFactor : 0
+  const decisionCallsCount = settings.bookingRate > 0 ? bookedMeetingsCount / (settings.bookingRate / 100) : 0
 
   const weeksPerMonth = settings.workDays > 0 ? settings.workDays / WORK_DAYS_PER_WEEK : 0
 
@@ -196,13 +201,120 @@ export function getFunnel(targetRevenue: number, settings: Settings): Funnel {
     perDay: settings.workDays > 0 ? perMonth / settings.workDays : 0,
   })
 
+  const deals = toStage('Nötige Deals', dealsCount)
+  const heldMeetings = toStage('Nötige durchgeführte Termine', heldMeetingsCount)
+  const bookedMeetings = toStage('Nötige gebuchte Termine', bookedMeetingsCount)
+  const decisionCalls = toStage('Nötige Entscheider-Gespräche', decisionCallsCount)
+
   return {
     targetRevenue,
-    stages: [
-      toStage('Nötige Deals', deals),
-      toStage('Nötige durchgeführte Termine', heldMeetings),
-      toStage('Nötige gebuchte Termine', bookedMeetings),
-      toStage('Nötige Entscheider-Gespräche', decisionCalls),
-    ],
+    deals,
+    heldMeetings,
+    bookedMeetings,
+    decisionCalls,
+    stages: [deals, heldMeetings, bookedMeetings, decisionCalls],
+  }
+}
+
+/** 7. Termin-Pipeline & Tagesaktivität */
+
+export const PIPELINE_LABELS: PipelineLabel[] = ['Discovery Call', 'Follow-Up Call', 'No-Show/Cancel', 'Lost', 'Closed Deal']
+
+const OPEN_PIPELINE_LABELS: PipelineLabel[] = ['Discovery Call', 'Follow-Up Call']
+
+/**
+ * Alle Labels außer 'No-Show/Cancel' beschreiben einen Termin, der stattgefunden hat
+ * (Discovery/Follow-Up: Ausgang offen, Lost/Closed Deal: Ausgang entschieden).
+ */
+export const HELD_MEETING_LABELS: PipelineLabel[] = ['Discovery Call', 'Follow-Up Call', 'Lost', 'Closed Deal']
+
+export interface PipelineSummaryItem {
+  label: PipelineLabel
+  count: number
+  isOpen: boolean
+}
+
+export function getPipelineSummary(pipeline: PipelineEntry[]): PipelineSummaryItem[] {
+  return PIPELINE_LABELS.map((label) => ({
+    label,
+    count: pipeline.filter((entry) => entry.label === label).length,
+    isOpen: OPEN_PIPELINE_LABELS.includes(label),
+  }))
+}
+
+/** Anzahl durchgeführter Termine, optional nur die vor `beforeDate` (Format "YYYY-MM-DD"). */
+export function getHeldMeetingsCount(pipeline: PipelineEntry[], beforeDate?: string): number {
+  return pipeline.filter(
+    (entry) => HELD_MEETING_LABELS.includes(entry.label) && (beforeDate === undefined || entry.date < beforeDate),
+  ).length
+}
+
+export function todayISODate(date: Date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function countWeekdaysUpTo(year: number, month: number, throughDay: number): number {
+  let count = 0
+  for (let day = 1; day <= throughDay; day++) {
+    const dayOfWeek = new Date(year, month - 1, day).getDay()
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) count++
+  }
+  return count
+}
+
+/**
+ * Zählt echte Mo–Fr-Werktage vom 1. des Monats bis `today`, gedeckelt auf `workDays`.
+ * Liegt `monthYear` in der Vergangenheit: voller `workDays`-Wert. In der Zukunft: 0.
+ */
+export function getElapsedWorkDays(monthYear: string, workDays: number, today: Date = new Date()): number {
+  const [year, month] = monthYear.split('-').map(Number)
+  const todayYear = today.getFullYear()
+  const todayMonth = today.getMonth() + 1
+
+  if (todayYear === year && todayMonth === month) {
+    return Math.min(workDays, countWeekdaysUpTo(year, month, today.getDate()))
+  }
+  const isPast = todayYear > year || (todayYear === year && todayMonth > month)
+  return isPast ? workDays : 0
+}
+
+export interface PaceMetric {
+  required: number
+  actual: number
+  /** actual - required, gerundet: positiv = vor dem Soll, negativ = hinter dem Soll. */
+  diff: number
+}
+
+export interface PaceStatus {
+  isCurrentMonth: boolean
+  elapsedWorkDays: number
+  totalWorkDays: number
+  decisionCalls: PaceMetric
+  heldMeetings: PaceMetric
+}
+
+export function getPaceStatus(funnel: Funnel, currentMonth: CurrentMonth, today: Date = new Date()): PaceStatus {
+  const isCurrentMonth = currentMonth.monthYear === todayISODate(today).slice(0, 7)
+  const elapsedWorkDays = getElapsedWorkDays(currentMonth.monthYear, currentMonth.settings.workDays, today)
+  const ratio = currentMonth.settings.workDays > 0 ? elapsedWorkDays / currentMonth.settings.workDays : 0
+
+  const requiredDecisionCalls = funnel.decisionCalls.perMonth * ratio
+  const requiredHeldMeetings = funnel.heldMeetings.perMonth * ratio
+  const actualHeldMeetings = getHeldMeetingsCount(currentMonth.pipeline, todayISODate(today))
+
+  return {
+    isCurrentMonth,
+    elapsedWorkDays,
+    totalWorkDays: currentMonth.settings.workDays,
+    decisionCalls: {
+      required: requiredDecisionCalls,
+      actual: currentMonth.decisionCallsMade,
+      diff: Math.round(currentMonth.decisionCallsMade - requiredDecisionCalls),
+    },
+    heldMeetings: {
+      required: requiredHeldMeetings,
+      actual: actualHeldMeetings,
+      diff: Math.round(actualHeldMeetings - requiredHeldMeetings),
+    },
   }
 }

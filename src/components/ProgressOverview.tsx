@@ -1,41 +1,46 @@
 import { Card } from './ui/Card'
-import { formatCurrency, formatPercent } from '../lib/format'
+import { ProgressBar } from './ui/ProgressBar'
+import { formatCurrency } from '../lib/format'
 import type { CommissionTier, RecordStatus } from '../lib/calculations'
 
 interface Props {
-  actualRevenue: number
+  monthActual: number
+  monthTarget: number
+  quarterLabel: string
+  quarterActual: number
+  quarterTarget: number
+  yearLabel: number
+  yearActual: number
+  yearTarget: number
   commission: number
-  commissionTier: CommissionTier
   grossTotal: number
-  achievementPct: number
-  missingRevenue: number
+  commissionTier: CommissionTier
   record: RecordStatus
 }
 
-export function KpiOverview({
-  actualRevenue,
+export function ProgressOverview({
+  monthActual,
+  monthTarget,
+  quarterLabel,
+  quarterActual,
+  quarterTarget,
+  yearLabel,
+  yearActual,
+  yearTarget,
   commission,
-  commissionTier,
   grossTotal,
-  achievementPct,
-  missingRevenue,
+  commissionTier,
   record,
 }: Props) {
   return (
-    <Card title="Kennzahlen – Aktueller Monat">
+    <Card title="Umsatz-Fortschritt" className="span-2">
+      <div className="progress-overview">
+        <ProgressBar label="Monat" actual={monthActual} target={monthTarget} />
+        <ProgressBar label={`Quartal (${quarterLabel})`} actual={quarterActual} target={quarterTarget} />
+        <ProgressBar label={`Jahr (${yearLabel})`} actual={yearActual} target={yearTarget} />
+      </div>
+
       <div className="kpi-grid">
-        <div className="kpi">
-          <span className="kpi-label">Ist-Umsatz</span>
-          <span className="kpi-value">{formatCurrency(actualRevenue)}</span>
-        </div>
-        <div className="kpi">
-          <span className="kpi-label">Zielerreichung</span>
-          <span className="kpi-value">{formatPercent(achievementPct)}</span>
-        </div>
-        <div className="kpi">
-          <span className="kpi-label">Fehlender Umsatz</span>
-          <span className="kpi-value">{formatCurrency(missingRevenue)}</span>
-        </div>
         <div className="kpi">
           <span className="kpi-label">Provision</span>
           <span className="kpi-value">{formatCurrency(commission)}</span>

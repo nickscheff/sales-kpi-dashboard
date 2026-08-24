@@ -395,3 +395,203 @@
   color: var(--accent);
   margin-bottom: 10px;
 }
+
+/* Progress overview */
+
+.progress-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.progress-label {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.progress-values {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-strong), var(--accent));
+  transition: width 0.2s ease;
+}
+
+/* Collapsible */
+
+.collapsible {
+  margin-top: 24px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.collapsible-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 20px 24px;
+  text-align: left;
+  color: inherit;
+}
+
+.collapsible-heading h2 {
+  font-size: 21px;
+}
+
+.collapsible-chevron {
+  color: var(--accent);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.collapsible-body {
+  padding: 4px 24px 24px;
+}
+
+.collapsible-body .app-grid {
+  margin: 0;
+}
+
+/* Daily activity */
+
+.daily-activity-total {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.daily-activity-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.daily-activity-form input {
+  max-width: 120px;
+}
+
+/* Pipeline */
+
+.pipeline-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.pipeline-chip {
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-inset);
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.pipeline-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* Pace status */
+
+.pace-level-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.pace-hint {
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.pace-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.pace-row:first-of-type {
+  border-top: none;
+}
+
+.pace-row-label {
+  font-weight: 600;
+}
+
+.pace-row-values {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.pace-badge {
+  align-self: flex-start;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-inset);
+  color: var(--text-muted);
+}
+
+.pace-badge.pace-onplan {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.pace-badge.pace-ahead {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.pace-badge.pace-behind {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+}
