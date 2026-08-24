@@ -10,6 +10,35 @@ export function getCommission(revenue: number, commissionRatePct: number): numbe
   return revenue * (commissionRatePct / 100)
 }
 
+/**
+ * Provisions-Stufenmodell (Cliff): Der gesamte Ist-Umsatz wird mit dem Satz der höchsten
+ * erreichten Stufe verprovisioniert, keine Staffelung pro Abschnitt. `threshold` ist die
+ * Zielerreichung als Anteil (0.5 = 50%), ab der der jeweilige Satz gilt.
+ */
+export interface CommissionTier {
+  threshold: number
+  rate: number
+  label: string
+}
+
+export const COMMISSION_TIERS: CommissionTier[] = [
+  { threshold: 0, rate: 0, label: 'unter 50% Zielerreichung' },
+  { threshold: 0.5, rate: 5, label: 'ab 50% Zielerreichung' },
+  { threshold: 1.25, rate: 7, label: 'ab 125% Zielerreichung' },
+  { threshold: 1.5, rate: 10, label: 'ab 150% Zielerreichung' },
+  { threshold: 2, rate: 12, label: 'ab 200% Zielerreichung' },
+]
+
+export function getCommissionTier(achievementPct: number): CommissionTier {
+  let applicable = COMMISSION_TIERS[0]
+  for (const tier of COMMISSION_TIERS) {
+    if (achievementPct >= tier.threshold) {
+      applicable = tier
+    }
+  }
+  return applicable
+}
+
 export function getGrossTotal(baseSalary: number, commission: number): number {
   return baseSalary + commission
 }
@@ -106,6 +135,8 @@ export interface StretchScenario {
   label: string
   requiredRevenue: number
   openAmount: number
+  commissionRate: number
+  commissionTierLabel: string
   commission: number
   grossTotal: number
 }
@@ -117,12 +148,16 @@ export function getStretchScenarios(
 ): StretchScenario[] {
   return STRETCH_LEVELS.map((level) => {
     const requiredRevenue = monthlyTarget * level
-    const commission = getCommission(requiredRevenue, settings.commissionRate)
+    // Das Level *ist* die Zielerreichung, die bei Erreichen dieser Stufe vorliegt.
+    const tier = getCommissionTier(level)
+    const commission = getCommission(requiredRevenue, tier.rate)
     return {
       level,
       label: level === 1 ? 'Basisziel (100%)' : `${Math.round(level * 100)}%`,
       requiredRevenue,
       openAmount: Math.max(0, requiredRevenue - actualRevenue),
+      commissionRate: tier.rate,
+      commissionTierLabel: tier.label,
       commission,
       grossTotal: getGrossTotal(settings.baseSalary, commission),
     }

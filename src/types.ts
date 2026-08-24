@@ -2,7 +2,6 @@
 export interface Settings {
   monthlyTarget: number
   baseSalary: number
-  commissionRate: number
   ticketSize: number
   closingRate: number
   noShowRate: number

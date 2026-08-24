@@ -26,7 +26,6 @@ export function SettingsPanel({ currentMonth, onChangeMonthYear, onChangeSetting
       <div className="field-grid">
         <NumberField label="Monatsziel" value={settings.monthlyTarget} onChange={(v) => set('monthlyTarget', v)} suffix="€" step={500} />
         <NumberField label="Grundvergütung" value={settings.baseSalary} onChange={(v) => set('baseSalary', v)} suffix="€" step={100} />
-        <NumberField label="Provisionssatz" value={settings.commissionRate} onChange={(v) => set('commissionRate', v)} suffix="%" step={0.5} />
         <NumberField label="Ticket-Größe (Ø Deal-Wert)" value={settings.ticketSize} onChange={(v) => set('ticketSize', v)} suffix="€" step={100} />
         <NumberField label="Closing-Rate" value={settings.closingRate} onChange={(v) => set('closingRate', v)} suffix="%" step={1} />
         <NumberField label="No-Show/Cancel-Rate" value={settings.noShowRate} onChange={(v) => set('noShowRate', v)} suffix="%" step={1} />

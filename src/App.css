@@ -270,6 +270,12 @@
   font-family: var(--font-heading);
 }
 
+.tier-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
 .record-banner {
   border-radius: 10px;
   border: 1px solid var(--border-strong);

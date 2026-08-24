@@ -1,17 +1,26 @@
 import { Card } from './ui/Card'
 import { formatCurrency, formatPercent } from '../lib/format'
-import type { RecordStatus } from '../lib/calculations'
+import type { CommissionTier, RecordStatus } from '../lib/calculations'
 
 interface Props {
   actualRevenue: number
   commission: number
+  commissionTier: CommissionTier
   grossTotal: number
   achievementPct: number
   missingRevenue: number
   record: RecordStatus
 }
 
-export function KpiOverview({ actualRevenue, commission, grossTotal, achievementPct, missingRevenue, record }: Props) {
+export function KpiOverview({
+  actualRevenue,
+  commission,
+  commissionTier,
+  grossTotal,
+  achievementPct,
+  missingRevenue,
+  record,
+}: Props) {
   return (
     <Card title="Kennzahlen – Aktueller Monat">
       <div className="kpi-grid">
@@ -36,6 +45,9 @@ export function KpiOverview({ actualRevenue, commission, grossTotal, achievement
           <span className="kpi-value">{formatCurrency(grossTotal)}</span>
         </div>
       </div>
+      <p className="tier-hint">
+        Aktuelle Stufe: {commissionTier.rate}% ({commissionTier.label})
+      </p>
       <p className={`record-banner${record.isRecord ? ' is-record' : ''}`}>
         {record.isRecord
           ? '🏆 Rekordmonat! Neuer Bestwert erreicht.'

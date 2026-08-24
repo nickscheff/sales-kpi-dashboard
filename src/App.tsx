@@ -11,6 +11,7 @@ import {
   getAchievementPct,
   getActualRevenue,
   getCommission,
+  getCommissionTier,
   getFunnel,
   getGrossTotal,
   getMissingRevenue,
@@ -30,9 +31,10 @@ function App() {
     if (!data) return null
 
     const actualRevenue = getActualRevenue(data.currentMonth.deals)
-    const commission = getCommission(actualRevenue, data.currentMonth.settings.commissionRate)
-    const grossTotal = getGrossTotal(data.currentMonth.settings.baseSalary, commission)
     const achievementPct = getAchievementPct(actualRevenue, data.currentMonth.settings.monthlyTarget)
+    const commissionTier = getCommissionTier(achievementPct)
+    const commission = getCommission(actualRevenue, commissionTier.rate)
+    const grossTotal = getGrossTotal(data.currentMonth.settings.baseSalary, commission)
     const missingRevenue = getMissingRevenue(data.currentMonth.settings.monthlyTarget, actualRevenue)
     const record = getRecordStatus(actualRevenue, data.history)
 
@@ -61,7 +63,7 @@ function App() {
       funnel: getFunnel(scenario.requiredRevenue, data.currentMonth.settings),
     }))
 
-    return { actualRevenue, commission, grossTotal, achievementPct, missingRevenue, record, quarterSum, yearSum, scenarios, funnelItems }
+    return { actualRevenue, commission, commissionTier, grossTotal, achievementPct, missingRevenue, record, quarterSum, yearSum, scenarios, funnelItems }
   }, [data])
 
   if (!data || !derived) {
@@ -107,6 +109,7 @@ function App() {
         <KpiOverview
           actualRevenue={derived.actualRevenue}
           commission={derived.commission}
+          commissionTier={derived.commissionTier}
           grossTotal={derived.grossTotal}
           achievementPct={derived.achievementPct}
           missingRevenue={derived.missingRevenue}

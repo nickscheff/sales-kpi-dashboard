@@ -19,6 +19,12 @@ export function StretchGoals({ scenarios }: { scenarios: StretchScenario[] }) {
                 <dd>{formatCurrency(scenario.openAmount)}</dd>
               </div>
               <div>
+                <dt>Satz</dt>
+                <dd>
+                  {scenario.commissionRate}% ({scenario.commissionTierLabel})
+                </dd>
+              </div>
+              <div>
                 <dt>Provision</dt>
                 <dd>{formatCurrency(scenario.commission)}</dd>
               </div>

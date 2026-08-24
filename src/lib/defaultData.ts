@@ -18,7 +18,6 @@ export function createDefaultData(): DashboardData {
       settings: {
         monthlyTarget: 50000,
         baseSalary: 3000,
-        commissionRate: 8,
         ticketSize: 2500,
         closingRate: 30,
         noShowRate: 15,
