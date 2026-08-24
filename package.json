@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "worker:dev": "npm --prefix worker run dev",
+    "worker:deploy": "npm run build && npm --prefix worker run deploy"
   },
   "dependencies": {
     "react": "^19.2.8",

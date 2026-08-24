@@ -1,121 +1,130 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useMemo } from 'react'
+import { DealList } from './components/DealList'
+import { FunnelBreakdown } from './components/FunnelBreakdown'
+import { HistoryPanel } from './components/HistoryPanel'
+import { KpiOverview } from './components/KpiOverview'
+import { QuarterYearPanel } from './components/QuarterYearPanel'
+import { SettingsPanel } from './components/SettingsPanel'
+import { StatusBadge } from './components/StatusBadge'
+import { StretchGoals } from './components/StretchGoals'
+import {
+  getAchievementPct,
+  getActualRevenue,
+  getCommission,
+  getFunnel,
+  getGrossTotal,
+  getMissingRevenue,
+  getQuarterSum,
+  getRecordStatus,
+  getStretchScenarios,
+  getYearSum,
+} from './lib/calculations'
+import { useDashboardData } from './state/useDashboardData'
+import type { Deal, HistoryEntry, Settings } from './types'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { data, status, errorMessage, update } = useDashboardData()
+
+  const derived = useMemo(() => {
+    if (!data) return null
+
+    const actualRevenue = getActualRevenue(data.currentMonth.deals)
+    const commission = getCommission(actualRevenue, data.currentMonth.settings.commissionRate)
+    const grossTotal = getGrossTotal(data.currentMonth.settings.baseSalary, commission)
+    const achievementPct = getAchievementPct(actualRevenue, data.currentMonth.settings.monthlyTarget)
+    const missingRevenue = getMissingRevenue(data.currentMonth.settings.monthlyTarget, actualRevenue)
+    const record = getRecordStatus(actualRevenue, data.history)
+
+    const quarterSum = getQuarterSum(
+      data.currentMonth.monthYear,
+      actualRevenue,
+      data.history,
+      data.quarterTarget.quarterLabel,
+      data.quarterTarget.target,
+    )
+    const yearSum = getYearSum(
+      data.currentMonth.monthYear,
+      actualRevenue,
+      data.history,
+      data.yearTarget.year,
+      data.yearTarget.target,
+    )
+
+    const scenarios = getStretchScenarios(
+      data.currentMonth.settings.monthlyTarget,
+      actualRevenue,
+      data.currentMonth.settings,
+    )
+    const funnelItems = scenarios.map((scenario) => ({
+      scenario,
+      funnel: getFunnel(scenario.requiredRevenue, data.currentMonth.settings),
+    }))
+
+    return { actualRevenue, commission, grossTotal, achievementPct, missingRevenue, record, quarterSum, yearSum, scenarios, funnelItems }
+  }, [data])
+
+  if (!data || !derived) {
+    return (
+      <div className="app-shell app-shell-centered">
+        <p className="loading-hint">{status === 'error' ? `Fehler: ${errorMessage}` : 'Lädt Dashboard…'}</p>
+      </div>
+    )
+  }
+
+  const updateSettings = (settings: Settings) =>
+    update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, settings } }))
+
+  const updateMonthYear = (monthYear: string) =>
+    update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, monthYear } }))
+
+  const updateDeals = (deals: Deal[]) =>
+    update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, deals } }))
+
+  const updateHistory = (history: HistoryEntry[]) => update((prev) => ({ ...prev, history }))
+
+  const updateQuarterTarget = (target: number) =>
+    update((prev) => ({ ...prev, quarterTarget: { ...prev.quarterTarget, target } }))
+
+  const updateYearTarget = (target: number) =>
+    update((prev) => ({ ...prev, yearTarget: { ...prev.yearTarget, target } }))
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <div className="app-shell">
+      <header className="app-header">
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+          <h1>Sales-KPI-Dashboard</h1>
+          <p className="app-subtitle">Zielplanung rückwärts gerechnet – bis zum nötigen Entscheider-Gespräch.</p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+        <StatusBadge status={status} />
+      </header>
 
-      <div className="ticks"></div>
+      {status === 'error' && errorMessage && <p className="error-banner">{errorMessage}</p>}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      <main className="app-grid">
+        <SettingsPanel currentMonth={data.currentMonth} onChangeMonthYear={updateMonthYear} onChangeSettings={updateSettings} />
+        <DealList deals={data.currentMonth.deals} onChange={updateDeals} />
+        <KpiOverview
+          actualRevenue={derived.actualRevenue}
+          commission={derived.commission}
+          grossTotal={derived.grossTotal}
+          achievementPct={derived.achievementPct}
+          missingRevenue={derived.missingRevenue}
+          record={derived.record}
+        />
+        <QuarterYearPanel
+          quarterTarget={data.quarterTarget}
+          yearTarget={data.yearTarget}
+          quarterSum={derived.quarterSum}
+          yearSum={derived.yearSum}
+          onChangeQuarterTarget={updateQuarterTarget}
+          onChangeYearTarget={updateYearTarget}
+        />
+        <HistoryPanel history={data.history} onChange={updateHistory} />
+        <StretchGoals scenarios={derived.scenarios} />
+        <FunnelBreakdown items={derived.funnelItems} />
+      </main>
+    </div>
   )
 }
 
