@@ -1,18 +1,23 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "sales-kpi-dashboard",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-08-24",
-  "assets": {
-    "directory": "../dist",
-    "binding": "ASSETS",
-    "run_worker_first": ["/api/*"],
-    "not_found_handling": "single-page-application"
-  },
-  "kv_namespaces": [
-    { "binding": "DASHBOARD_KV", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }
-  ],
-  "observability": {
-    "enabled": true
-  }
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "sales-kpi-dashboard",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-08-24",
+	"assets": {
+		"directory": "../dist",
+		"binding": "ASSETS",
+		"run_worker_first": [
+			"/api/*"
+		],
+		"not_found_handling": "single-page-application"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "DASHBOARD_KV",
+			"id": "564d870c06c44704b2a8ef74453e092e"
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
 }
