@@ -267,6 +267,11 @@ export function todayISODate(date: Date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+/** Ob `monthYear` dem echten, aktuellen Kalendermonat entspricht. */
+export function isRealCurrentMonth(monthYear: string, today: Date = new Date()): boolean {
+  return monthYear === todayISODate(today).slice(0, 7)
+}
+
 function countWeekdaysUpTo(year: number, month: number, throughDay: number): number {
   let count = 0
   for (let day = 1; day <= throughDay; day++) {
@@ -318,7 +323,7 @@ export function getPaceStatus(
   monthDailyActivity: DailyActivityEntry[],
   today: Date = new Date(),
 ): PaceStatus {
-  const isCurrentMonth = selectedMonth.monthYear === todayISODate(today).slice(0, 7)
+  const isCurrentMonth = isRealCurrentMonth(selectedMonth.monthYear, today)
   const elapsedWorkDays = getElapsedWorkDays(selectedMonth.monthYear, selectedMonth.settings.workDays, today)
   const ratio = selectedMonth.settings.workDays > 0 ? elapsedWorkDays / selectedMonth.settings.workDays : 0
 

@@ -20,6 +20,8 @@ import {
   getStretchScenarios,
   getYearSum,
   isInMonth,
+  isRealCurrentMonth,
+  todayISODate,
 } from './lib/calculations'
 import { useDashboardData } from './state/useDashboardData'
 import type { DailyActivityEntry, Deal, HistoryEntry, PipelineEntry, Settings } from './types'
@@ -64,6 +66,8 @@ function App() {
     const paceFunnel = getFunnel(paceScenario.requiredRevenue, data.selectedMonth.settings)
     const pace = getPaceStatus(paceFunnel, data.selectedMonth, monthPipeline, monthDailyActivity)
 
+    const isViewingOtherMonth = !isRealCurrentMonth(monthYear)
+
     return {
       monthYear,
       monthDeals,
@@ -81,6 +85,7 @@ function App() {
       scenarios,
       funnelItems,
       pace,
+      isViewingOtherMonth,
     }
   }, [data, paceLevel])
 
@@ -146,6 +151,14 @@ function App() {
       </header>
 
       {status === 'error' && errorMessage && <p className="error-banner">{errorMessage}</p>}
+
+      {derived.isViewingOtherMonth && (
+        <p className="month-hint">
+          Du betrachtest {derived.monthYear}, nicht den aktuellen Kalendermonat. Neue Einträge (Deal, Termin,
+          Tagesaktivität) werden trotzdem mit dem heutigen Datum ({todayISODate()}) angelegt und erscheinen deshalb
+          im echten aktuellen Monat – nicht unbedingt hier in dieser Ansicht.
+        </p>
+      )}
 
       <main className="app-grid">
         <ProgressOverview

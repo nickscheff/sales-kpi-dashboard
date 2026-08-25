@@ -43,6 +43,16 @@
   margin-bottom: 20px;
 }
 
+.month-hint {
+  color: var(--text-muted);
+  background: var(--bg-inset);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
 .app-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
