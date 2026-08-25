@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from './ui/Card'
 import { Collapsible } from './ui/Collapsible'
 import { PillButton } from './ui/PillButton'
@@ -22,6 +22,16 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
   const closed = pipeline
     .filter((entry) => !OPEN_PIPELINE_LABELS.includes(entry.label))
     .sort((a, b) => b.date.localeCompare(a.date))
+
+  const hasPendingClosedDeal = closed.some((entry) => entry.label === 'Closed Deal' && !entry.dealCreated)
+  const [abgeschlossenOpen, setAbgeschlossenOpen] = useState(hasPendingClosedDeal)
+
+  // Klappt "Abgeschlossen" automatisch auf, sobald ein unbestätigter Closed Deal auftaucht
+  // (z.B. weil ein offener Termin auf "Closed Deal" umgestellt wurde), damit die
+  // Übernahme-Aktion nicht in einem zugeklappten Bereich verschwindet.
+  useEffect(() => {
+    if (hasPendingClosedDeal) setAbgeschlossenOpen(true)
+  }, [hasPendingClosedDeal])
 
   const updateEntry = (id: string, patch: Partial<PipelineEntry>) =>
     onChange(pipeline.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)))
@@ -135,7 +145,12 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
         + Termin hinzufügen
       </PillButton>
 
-      <Collapsible title={`Abgeschlossen (${closed.length})`} defaultOpen={false} className="pipeline-closed">
+      <Collapsible
+        title={`Abgeschlossen (${closed.length})`}
+        open={abgeschlossenOpen}
+        onOpenChange={setAbgeschlossenOpen}
+        className="pipeline-closed"
+      >
         <div className="table-scroll">
           <table className="table">
             <thead>
