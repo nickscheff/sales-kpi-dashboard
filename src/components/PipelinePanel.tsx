@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Card } from './ui/Card'
 import { Collapsible } from './ui/Collapsible'
 import { PillButton } from './ui/PillButton'
@@ -25,13 +25,18 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
 
   const hasPendingClosedDeal = closed.some((entry) => entry.label === 'Closed Deal' && !entry.dealCreated)
   const [abgeschlossenOpen, setAbgeschlossenOpen] = useState(hasPendingClosedDeal)
+  const [prevHasPendingClosedDeal, setPrevHasPendingClosedDeal] = useState(hasPendingClosedDeal)
 
-  // Klappt "Abgeschlossen" automatisch auf, sobald ein unbestätigter Closed Deal auftaucht
-  // (z.B. weil ein offener Termin auf "Closed Deal" umgestellt wurde), damit die
-  // Übernahme-Aktion nicht in einem zugeklappten Bereich verschwindet.
-  useEffect(() => {
+  // State während des Renderns anpassen (statt useEffect, siehe React-Doku "Adjusting
+  // state when a prop changes"): klappt "Abgeschlossen" automatisch auf, sobald ein
+  // unbestätigter Closed Deal auftaucht (z.B. weil ein offener Termin auf "Closed Deal"
+  // umgestellt wurde), damit die Übernahme-Aktion nicht in einem zugeklappten Bereich
+  // verschwindet. Reagiert nur auf den Wechsel false→true; ein manuelles Zuklappen bleibt
+  // bestehen, solange sich hasPendingClosedDeal nicht ändert.
+  if (hasPendingClosedDeal !== prevHasPendingClosedDeal) {
+    setPrevHasPendingClosedDeal(hasPendingClosedDeal)
     if (hasPendingClosedDeal) setAbgeschlossenOpen(true)
-  }, [hasPendingClosedDeal])
+  }
 
   const updateEntry = (id: string, patch: Partial<PipelineEntry>) =>
     onChange(pipeline.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)))
