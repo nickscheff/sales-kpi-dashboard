@@ -5,14 +5,15 @@ interface Props {
   title: string
   subtitle?: string
   defaultOpen?: boolean
+  className?: string
   children: ReactNode
 }
 
-export function Collapsible({ title, subtitle, defaultOpen = false, children }: Props) {
+export function Collapsible({ title, subtitle, defaultOpen = false, className, children }: Props) {
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <section className="collapsible">
+    <section className={`collapsible${className ? ` ${className}` : ''}`}>
       <button
         type="button"
         className="collapsible-toggle"

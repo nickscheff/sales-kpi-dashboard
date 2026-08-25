@@ -230,7 +230,7 @@ export function getFunnel(targetRevenue: number, settings: Settings): Funnel {
 
 export const PIPELINE_LABELS: PipelineLabel[] = ['Discovery Call', 'Follow-Up Call', 'No-Show/Cancel', 'Lost', 'Closed Deal']
 
-const OPEN_PIPELINE_LABELS: PipelineLabel[] = ['Discovery Call', 'Follow-Up Call']
+export const OPEN_PIPELINE_LABELS: PipelineLabel[] = ['Discovery Call', 'Follow-Up Call']
 
 /**
  * Alle Labels außer 'No-Show/Cancel' beschreiben einen Termin, der stattgefunden hat

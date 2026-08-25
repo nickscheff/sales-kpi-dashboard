@@ -196,6 +196,16 @@
   transform: scale(0.97);
 }
 
+.pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pill:disabled:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .pill-ghost {
   padding: 7px 12px;
   border-color: var(--border-strong);
@@ -524,6 +534,32 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 18px;
+}
+
+.pipeline-deal-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pipeline-deal-action input {
+  max-width: 100px;
+}
+
+.deal-taken-hint {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Verschachtelter Collapsible innerhalb einer Card (z.B. Pipeline "Abgeschlossen") -
+   heller/eingerückt statt gleicher Ton wie die umschließende Card, kein Doppel-Schatten. */
+.collapsible.pipeline-closed {
+  margin-top: 18px;
+  background: var(--bg-inset);
+  box-shadow: none;
 }
 
 .pipeline-chip {

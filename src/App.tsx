@@ -23,6 +23,7 @@ import {
   isRealCurrentMonth,
   todayISODate,
 } from './lib/calculations'
+import { newId } from './lib/id'
 import { useDashboardData } from './state/useDashboardData'
 import type { DailyActivityEntry, Deal, HistoryEntry, PipelineEntry, Settings } from './types'
 import './App.css'
@@ -123,6 +124,16 @@ function App() {
       ],
     }))
 
+  // Einmalige Übernahme des Umsatzes eines "Closed Deal"-Pipeline-Eintrags in die
+  // Deal-Liste: neuer Deal (Firma/Datum vom Termin) + Flag am Pipeline-Eintrag in einem
+  // Update, kein dauerhafter Link zwischen Deal und Pipeline-Eintrag danach.
+  const createDealFromPipelineEntry = (entry: PipelineEntry, revenue: number) =>
+    update((prev) => ({
+      ...prev,
+      deals: [...prev.deals, { id: newId(), company: entry.company ?? '', revenue, date: entry.date }],
+      pipeline: prev.pipeline.map((p) => (p.id === entry.id ? { ...p, dealCreated: true } : p)),
+    }))
+
   const updateDailyActivity = (monthDailyActivity: DailyActivityEntry[]) =>
     update((prev) => ({
       ...prev,
@@ -179,7 +190,11 @@ function App() {
         <DailyActivityPanel entries={derived.monthDailyActivity} onChange={updateDailyActivity} />
         <PaceStatus level={paceLevel} onChangeLevel={setPaceLevel} pace={derived.pace} />
 
-        <PipelinePanel pipeline={derived.monthPipeline} onChange={updatePipeline} />
+        <PipelinePanel
+          pipeline={derived.monthPipeline}
+          onChange={updatePipeline}
+          onCreateDeal={createDealFromPipelineEntry}
+        />
         <DealList deals={derived.monthDeals} onChange={updateDeals} />
       </main>
 

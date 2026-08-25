@@ -52,6 +52,8 @@ export interface PipelineEntry {
   date: string
   label: PipelineLabel
   company?: string
+  /** Wurde aus diesem Eintrag bereits einmalig ein Deal übernommen? Kein Verweis, nur Flag. */
+  dealCreated?: boolean
 }
 
 export interface DailyActivityEntry {
