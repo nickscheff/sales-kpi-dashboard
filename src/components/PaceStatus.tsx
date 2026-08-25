@@ -57,6 +57,7 @@ export function PaceStatus({ level, onChangeLevel, pace }: Props) {
               Soll bis heute: {formatNumber(pace.heldMeetings.required)} · Ist: {pace.heldMeetings.actual}
             </span>
             <span className={`pace-badge${diffClass(pace.heldMeetings.diff)}`}>{diffLabel(pace.heldMeetings.diff)}</span>
+            <p className="pace-row-hint">Zählt nur Pipeline-Termine mit vergangenem Datum, unabhängig von der Deal-Liste.</p>
           </div>
         </>
       )}
