@@ -75,12 +75,14 @@
   box-shadow: var(--shadow);
 }
 
-.card.span-2 {
+/* Gemeinsame Grid-Span-Klasse für Card UND Collapsible (beide Karten-artige
+   Grid-Kacheln, die volle Breite einnehmen sollen). */
+.span-2 {
   grid-column: span 2;
 }
 
 @media (max-width: 860px) {
-  .card.span-2 {
+  .span-2 {
     grid-column: span 1;
   }
 }
@@ -569,6 +571,26 @@
   padding: 6px 14px;
   font-size: 13px;
   color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.pipeline-chip:hover {
+  border-color: var(--accent-border);
+  color: var(--text);
+}
+
+.pipeline-chip.pipeline-chip-active {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.pipeline-section-title {
+  font-size: 15px;
+  color: var(--accent);
+  margin: 18px 0 10px;
 }
 
 /* Pace status */

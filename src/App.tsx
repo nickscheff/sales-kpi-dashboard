@@ -124,14 +124,18 @@ function App() {
       ],
     }))
 
-  // Einmalige Übernahme des Umsatzes eines "Closed Deal"-Pipeline-Eintrags in die
-  // Deal-Liste: neuer Deal (Firma/Datum vom Termin) + Flag am Pipeline-Eintrag in einem
-  // Update, kein dauerhafter Link zwischen Deal und Pipeline-Eintrag danach.
-  const createDealFromPipelineEntry = (entry: PipelineEntry, revenue: number) =>
+  // Übernahme des Umsatzes eines Pipeline-Eintrags in die Deal-Liste: neuer Deal
+  // (Firma/Datum vom Termin) + Eintrag wird als abgeschlossener Closed Deal markiert, in
+  // einem Update. Kein dauerhafter Link zwischen Deal und Pipeline-Eintrag danach. Wird von
+  // zwei Stellen aufgerufen: dem "✓ Deal abschließen"-Button in der Offen-Tabelle (Eintrag
+  // ist noch Discovery/Follow-Up, `label: 'Closed Deal'` ist hier die entscheidende
+  // Ergänzung) und dem bestehenden "✓ Übernehmen" in der Abgeschlossen-Tabelle (Eintrag ist
+  // dort schon 'Closed Deal', die Label-Zuweisung ist für diesen Weg ein No-Op).
+  const closeDealFromPipelineEntry = (entry: PipelineEntry, revenue: number) =>
     update((prev) => ({
       ...prev,
       deals: [...prev.deals, { id: newId(), company: entry.company ?? '', revenue, date: entry.date }],
-      pipeline: prev.pipeline.map((p) => (p.id === entry.id ? { ...p, dealCreated: true } : p)),
+      pipeline: prev.pipeline.map((p) => (p.id === entry.id ? { ...p, label: 'Closed Deal', dealCreated: true } : p)),
     }))
 
   const updateDailyActivity = (monthDailyActivity: DailyActivityEntry[]) =>
@@ -193,7 +197,7 @@ function App() {
         <PipelinePanel
           pipeline={derived.monthPipeline}
           onChange={updatePipeline}
-          onCreateDeal={createDealFromPipelineEntry}
+          onCreateDeal={closeDealFromPipelineEntry}
         />
         <DealList deals={derived.monthDeals} onChange={updateDeals} />
       </main>

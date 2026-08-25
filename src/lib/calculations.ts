@@ -232,6 +232,11 @@ export const PIPELINE_LABELS: PipelineLabel[] = ['Discovery Call', 'Follow-Up Ca
 
 export const OPEN_PIPELINE_LABELS: PipelineLabel[] = ['Discovery Call', 'Follow-Up Call']
 
+/** No-Show/Cancel heißt nur "Termin hat nicht stattgefunden", nicht "Thema erledigt". */
+export const REACTIVATABLE_PIPELINE_LABELS: PipelineLabel[] = ['No-Show/Cancel']
+
+export const CLOSED_PIPELINE_LABELS: PipelineLabel[] = ['Lost', 'Closed Deal']
+
 /**
  * Alle Labels außer 'No-Show/Cancel' beschreiben einen Termin, der stattgefunden hat
  * (Discovery/Follow-Up: Ausgang offen, Lost/Closed Deal: Ausgang entschieden).

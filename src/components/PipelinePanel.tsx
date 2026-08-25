@@ -2,7 +2,14 @@ import { useState } from 'react'
 import { Card } from './ui/Card'
 import { Collapsible } from './ui/Collapsible'
 import { PillButton } from './ui/PillButton'
-import { OPEN_PIPELINE_LABELS, PIPELINE_LABELS, getPipelineSummary, todayISODate } from '../lib/calculations'
+import {
+  CLOSED_PIPELINE_LABELS,
+  OPEN_PIPELINE_LABELS,
+  PIPELINE_LABELS,
+  REACTIVATABLE_PIPELINE_LABELS,
+  getPipelineSummary,
+  todayISODate,
+} from '../lib/calculations'
 import { newId } from '../lib/id'
 import type { PipelineEntry, PipelineLabel } from '../types'
 
@@ -12,18 +19,34 @@ interface Props {
   onCreateDeal: (entry: PipelineEntry, revenue: number) => void
 }
 
+type Section = 'open' | 'noShow' | 'closed'
+
 export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
   const [dealRevenueDrafts, setDealRevenueDrafts] = useState<Record<string, number>>({})
+  const [closingEntryIds, setClosingEntryIds] = useState<Set<string>>(new Set())
+  const [reactivatingEntryIds, setReactivatingEntryIds] = useState<Set<string>>(new Set())
+  const [reactivateDateDrafts, setReactivateDateDrafts] = useState<Record<string, string>>({})
+  const [activeLabelFilter, setActiveLabelFilter] = useState<PipelineLabel | null>(null)
 
   const summary = getPipelineSummary(pipeline)
-  const open = pipeline
-    .filter((entry) => OPEN_PIPELINE_LABELS.includes(entry.label))
-    .sort((a, b) => a.date.localeCompare(b.date))
-  const closed = pipeline
-    .filter((entry) => !OPEN_PIPELINE_LABELS.includes(entry.label))
-    .sort((a, b) => b.date.localeCompare(a.date))
 
-  const hasPendingClosedDeal = closed.some((entry) => entry.label === 'Closed Deal' && !entry.dealCreated)
+  const openAll = pipeline.filter((entry) => OPEN_PIPELINE_LABELS.includes(entry.label)).sort((a, b) => a.date.localeCompare(b.date))
+  const noShowAll = pipeline
+    .filter((entry) => REACTIVATABLE_PIPELINE_LABELS.includes(entry.label))
+    .sort((a, b) => b.date.localeCompare(a.date))
+  const closedAll = pipeline.filter((entry) => CLOSED_PIPELINE_LABELS.includes(entry.label)).sort((a, b) => b.date.localeCompare(a.date))
+
+  // Ein Chip filtert immer nur "seine" Tabelle - die anderen beiden bleiben unangetastet,
+  // da jedes Label eindeutig genau einer der drei Gruppen angehört.
+  const open = activeLabelFilter && OPEN_PIPELINE_LABELS.includes(activeLabelFilter) ? openAll.filter((e) => e.label === activeLabelFilter) : openAll
+  const noShow =
+    activeLabelFilter && REACTIVATABLE_PIPELINE_LABELS.includes(activeLabelFilter)
+      ? noShowAll.filter((e) => e.label === activeLabelFilter)
+      : noShowAll
+  const closed =
+    activeLabelFilter && CLOSED_PIPELINE_LABELS.includes(activeLabelFilter) ? closedAll.filter((e) => e.label === activeLabelFilter) : closedAll
+
+  const hasPendingClosedDeal = closedAll.some((entry) => entry.label === 'Closed Deal' && !entry.dealCreated)
   const [abgeschlossenOpen, setAbgeschlossenOpen] = useState(hasPendingClosedDeal)
   const [prevHasPendingClosedDeal, setPrevHasPendingClosedDeal] = useState(hasPendingClosedDeal)
 
@@ -46,20 +69,58 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
   const add = () =>
     onChange([...pipeline, { id: newId(), date: todayISODate(), label: 'Discovery Call', company: '' }])
 
+  const toggleFilter = (label: PipelineLabel) => {
+    const next = activeLabelFilter === label ? null : label
+    setActiveLabelFilter(next)
+    if (next && CLOSED_PIPELINE_LABELS.includes(next)) setAbgeschlossenOpen(true)
+  }
+  const resetFilter = () => setActiveLabelFilter(null)
+
   const setDraft = (id: string, value: number) => setDealRevenueDrafts((prev) => ({ ...prev, [id]: value }))
 
-  const submitDeal = (entry: PipelineEntry) => {
-    const revenue = dealRevenueDrafts[entry.id] ?? 0
-    if (revenue <= 0) return
-    onCreateDeal(entry, revenue)
+  const startClosing = (id: string) => setClosingEntryIds((prev) => new Set(prev).add(id))
+  const cancelClosing = (id: string) => {
+    setClosingEntryIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
     setDealRevenueDrafts((prev) => {
       const next = { ...prev }
-      delete next[entry.id]
+      delete next[id]
       return next
     })
   }
+  const confirmDeal = (entry: PipelineEntry) => {
+    const revenue = dealRevenueDrafts[entry.id] ?? 0
+    if (revenue <= 0) return
+    onCreateDeal(entry, revenue)
+    cancelClosing(entry.id)
+  }
 
-  const renderRow = (entry: PipelineEntry, withAction: boolean) => (
+  const startReactivate = (id: string) => {
+    setReactivatingEntryIds((prev) => new Set(prev).add(id))
+    setReactivateDateDrafts((prev) => ({ ...prev, [id]: todayISODate() }))
+  }
+  const cancelReactivate = (id: string) => {
+    setReactivatingEntryIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    setReactivateDateDrafts((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+  const confirmReactivate = (entry: PipelineEntry) => {
+    const date = reactivateDateDrafts[entry.id] ?? todayISODate()
+    updateEntry(entry.id, { label: 'Discovery Call', date })
+    cancelReactivate(entry.id)
+  }
+
+  const renderRow = (entry: PipelineEntry, section: Section) => (
     <tr key={entry.id}>
       <td>
         <input type="date" value={entry.date} onChange={(e) => updateEntry(entry.id, { date: e.target.value })} />
@@ -81,10 +142,9 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
           ))}
         </select>
       </td>
-      {withAction && (
-        <td>
-          {entry.label === 'Closed Deal' && entry.dealCreated && <span className="deal-taken-hint">✓ Deal angelegt</span>}
-          {entry.label === 'Closed Deal' && !entry.dealCreated && (
+      <td>
+        {section === 'open' &&
+          (closingEntryIds.has(entry.id) ? (
             <div className="pipeline-deal-action">
               <input
                 type="number"
@@ -94,17 +154,64 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
                 value={dealRevenueDrafts[entry.id] ?? ''}
                 onChange={(e) => setDraft(entry.id, e.target.valueAsNumber || 0)}
               />
-              <PillButton
-                type="button"
-                onClick={() => submitDeal(entry)}
-                disabled={(dealRevenueDrafts[entry.id] ?? 0) <= 0}
-              >
-                ✓ Übernehmen
+              <PillButton type="button" onClick={() => confirmDeal(entry)} disabled={(dealRevenueDrafts[entry.id] ?? 0) <= 0}>
+                Bestätigen
+              </PillButton>
+              <PillButton variant="ghost" type="button" onClick={() => cancelClosing(entry.id)}>
+                Abbrechen
               </PillButton>
             </div>
-          )}
-        </td>
-      )}
+          ) : (
+            <PillButton type="button" onClick={() => startClosing(entry.id)}>
+              ✓ Deal abschließen
+            </PillButton>
+          ))}
+        {section === 'noShow' &&
+          (reactivatingEntryIds.has(entry.id) ? (
+            <div className="pipeline-deal-action">
+              <span className="field-label">Neuer Termin am</span>
+              <input
+                type="date"
+                value={reactivateDateDrafts[entry.id] ?? todayISODate()}
+                onChange={(e) => setReactivateDateDrafts((prev) => ({ ...prev, [entry.id]: e.target.value }))}
+              />
+              <PillButton type="button" onClick={() => confirmReactivate(entry)}>
+                Bestätigen
+              </PillButton>
+              <PillButton variant="ghost" type="button" onClick={() => cancelReactivate(entry.id)}>
+                Abbrechen
+              </PillButton>
+            </div>
+          ) : (
+            <PillButton type="button" onClick={() => startReactivate(entry.id)}>
+              ↺ Reaktivieren
+            </PillButton>
+          ))}
+        {section === 'closed' && (
+          <>
+            {entry.label === 'Closed Deal' && entry.dealCreated && <span className="deal-taken-hint">✓ Deal angelegt</span>}
+            {entry.label === 'Closed Deal' && !entry.dealCreated && (
+              <div className="pipeline-deal-action">
+                <input
+                  type="number"
+                  min={0}
+                  step={100}
+                  placeholder="Umsatz €"
+                  value={dealRevenueDrafts[entry.id] ?? ''}
+                  onChange={(e) => setDraft(entry.id, e.target.valueAsNumber || 0)}
+                />
+                <PillButton
+                  type="button"
+                  onClick={() => confirmDeal(entry)}
+                  disabled={(dealRevenueDrafts[entry.id] ?? 0) <= 0}
+                >
+                  ✓ Übernehmen
+                </PillButton>
+              </div>
+            )}
+          </>
+        )}
+      </td>
       <td>
         <PillButton variant="ghost" type="button" onClick={() => remove(entry.id)} aria-label="Eintrag entfernen">
           ✕
@@ -116,11 +223,23 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
   return (
     <Card title="Termin-Pipeline" subtitle="Gebuchte Termine nach Ausgang, dieser Monat" className="span-2">
       <div className="pipeline-summary">
+        <button
+          type="button"
+          className={`pipeline-chip${activeLabelFilter === null ? ' pipeline-chip-active' : ''}`}
+          onClick={resetFilter}
+        >
+          Alle
+        </button>
         {summary.map((item) => (
-          <span className="pipeline-chip" key={item.label}>
+          <button
+            type="button"
+            className={`pipeline-chip${activeLabelFilter === item.label ? ' pipeline-chip-active' : ''}`}
+            key={item.label}
+            onClick={() => toggleFilter(item.label)}
+          >
             {item.count} {item.label}
             {item.isOpen ? ' offen' : ''}
-          </span>
+          </button>
         ))}
       </div>
 
@@ -131,14 +250,15 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
               <th>Datum</th>
               <th>Firma</th>
               <th>Label</th>
+              <th>Aktion</th>
               <th aria-hidden="true"></th>
             </tr>
           </thead>
           <tbody>
-            {open.map((entry) => renderRow(entry, false))}
+            {open.map((entry) => renderRow(entry, 'open'))}
             {open.length === 0 && (
               <tr>
-                <td colSpan={4} className="table-empty">
+                <td colSpan={5} className="table-empty">
                   Keine offenen Termine in diesem Monat.
                 </td>
               </tr>
@@ -150,8 +270,33 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
         + Termin hinzufügen
       </PillButton>
 
+      <h3 className="pipeline-section-title">No-Show / Cancel ({noShowAll.length})</h3>
+      <div className="table-scroll">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Firma</th>
+              <th>Label</th>
+              <th>Aktion</th>
+              <th aria-hidden="true"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {noShow.map((entry) => renderRow(entry, 'noShow'))}
+            {noShow.length === 0 && (
+              <tr>
+                <td colSpan={5} className="table-empty">
+                  Keine No-Show/Cancel-Termine in diesem Monat.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
       <Collapsible
-        title={`Abgeschlossen (${closed.length})`}
+        title={`Abgeschlossen (${closedAll.length})`}
         open={abgeschlossenOpen}
         onOpenChange={setAbgeschlossenOpen}
         className="pipeline-closed"
@@ -168,7 +313,7 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
               </tr>
             </thead>
             <tbody>
-              {closed.map((entry) => renderRow(entry, true))}
+              {closed.map((entry) => renderRow(entry, 'closed'))}
               {closed.length === 0 && (
                 <tr>
                   <td colSpan={5} className="table-empty">

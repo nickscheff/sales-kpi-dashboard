@@ -1,4 +1,4 @@
-import { Card } from './ui/Card'
+import { Collapsible } from './ui/Collapsible'
 import { PillButton } from './ui/PillButton'
 import { getActualRevenue, todayISODate } from '../lib/calculations'
 import { formatCurrency } from '../lib/format'
@@ -21,7 +21,12 @@ export function DealList({ deals, onChange }: Props) {
   const addDeal = () => onChange([...deals, { id: newId(), company: '', revenue: 0, date: todayISODate() }])
 
   return (
-    <Card title="Deal-Liste" subtitle="Ist-Umsatz = Summe aller Deals im gewählten Monat" className="span-2">
+    <Collapsible
+      title={`Deal-Liste (${deals.length}) · ${formatCurrency(total)}`}
+      subtitle="Ist-Umsatz = Summe aller Deals im gewählten Monat"
+      defaultOpen={false}
+      className="span-2"
+    >
       <div className="table-scroll">
         <table className="table">
           <thead>
@@ -82,6 +87,6 @@ export function DealList({ deals, onChange }: Props) {
         </table>
       </div>
       <PillButton type="button" onClick={addDeal}>+ Deal hinzufügen</PillButton>
-    </Card>
+    </Collapsible>
   )
 }
