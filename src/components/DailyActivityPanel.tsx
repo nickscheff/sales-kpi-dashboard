@@ -1,26 +1,30 @@
 import { useState } from 'react'
 import { Card } from './ui/Card'
 import { PillButton } from './ui/PillButton'
+import { todayISODate } from '../lib/calculations'
+import { newId } from '../lib/id'
+import type { DailyActivityEntry } from '../types'
 
 interface Props {
-  decisionCallsMade: number
-  onChange: (value: number) => void
+  entries: DailyActivityEntry[]
+  onChange: (entries: DailyActivityEntry[]) => void
 }
 
-export function DailyActivityPanel({ decisionCallsMade, onChange }: Props) {
+export function DailyActivityPanel({ entries, onChange }: Props) {
   const [input, setInput] = useState('')
+  const total = entries.reduce((sum, entry) => sum + entry.count, 0)
 
   const add = () => {
     const parsed = Number(input)
     if (!Number.isFinite(parsed) || parsed === 0) return
-    onChange(decisionCallsMade + parsed)
+    onChange([...entries, { id: newId(), date: todayISODate(), count: parsed }])
     setInput('')
   }
 
   return (
     <Card title="Tagesaktivität" subtitle="Entscheider-Gespräche geführt">
       <div className="daily-activity-total">
-        <span className="kpi-value">{decisionCallsMade}</span>
+        <span className="kpi-value">{total}</span>
         <span className="field-label">diesen Monat geführt</span>
       </div>
       <div className="daily-activity-form">

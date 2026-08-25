@@ -525,13 +525,6 @@
   color: var(--text-muted);
 }
 
-.pipeline-form {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
 /* Pace status */
 
 .pace-level-picker {

@@ -1,15 +1,12 @@
 import { Card } from './ui/Card'
 import { PillButton } from './ui/PillButton'
 import { formatCurrency } from '../lib/format'
+import { newId } from '../lib/id'
 import type { HistoryEntry } from '../types'
 
 interface Props {
   history: HistoryEntry[]
   onChange: (history: HistoryEntry[]) => void
-}
-
-function newId(): string {
-  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `id-${Date.now()}-${Math.random()}`
 }
 
 export function HistoryPanel({ history, onChange }: Props) {

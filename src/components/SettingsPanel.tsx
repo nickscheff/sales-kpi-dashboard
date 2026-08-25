@@ -1,25 +1,25 @@
 import { Card } from './ui/Card'
 import { NumberField } from './ui/Field'
-import type { CurrentMonth, Settings } from '../types'
+import type { SelectedMonth, Settings } from '../types'
 
 interface Props {
-  currentMonth: CurrentMonth
+  selectedMonth: SelectedMonth
   onChangeMonthYear: (monthYear: string) => void
   onChangeSettings: (settings: Settings) => void
 }
 
-export function SettingsPanel({ currentMonth, onChangeMonthYear, onChangeSettings }: Props) {
-  const settings = currentMonth.settings
+export function SettingsPanel({ selectedMonth, onChangeMonthYear, onChangeSettings }: Props) {
+  const settings = selectedMonth.settings
   const set = <K extends keyof Settings>(key: K, value: number) =>
     onChangeSettings({ ...settings, [key]: value })
 
   return (
-    <Card title="Aktueller Monat – Einstellungen" subtitle="Basis für alle Berechnungen unten" className="span-2">
+    <Card title="Monats-Einstellungen" subtitle="Basis für alle Berechnungen unten" className="span-2">
       <label className="field">
         <span className="field-label">Monat</span>
         <input
           type="month"
-          value={currentMonth.monthYear}
+          value={selectedMonth.monthYear}
           onChange={(e) => onChangeMonthYear(e.target.value)}
         />
       </label>

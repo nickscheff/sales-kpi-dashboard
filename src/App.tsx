@@ -8,20 +8,21 @@ import { ProgressOverview } from './components/ProgressOverview'
 import { StatusBadge } from './components/StatusBadge'
 import {
   getAchievementPct,
-  getActualRevenue,
   getCommission,
   getCommissionTier,
   getFunnel,
   getGrossTotal,
   getMissingRevenue,
+  getMonthlyRevenueMap,
   getPaceStatus,
   getQuarterSum,
   getRecordStatus,
   getStretchScenarios,
   getYearSum,
+  isInMonth,
 } from './lib/calculations'
 import { useDashboardData } from './state/useDashboardData'
-import type { Deal, HistoryEntry, PipelineEntry, Settings } from './types'
+import type { DailyActivityEntry, Deal, HistoryEntry, PipelineEntry, Settings } from './types'
 import './App.css'
 
 function App() {
@@ -31,44 +32,43 @@ function App() {
   const derived = useMemo(() => {
     if (!data) return null
 
-    const actualRevenue = getActualRevenue(data.currentMonth.deals)
-    const achievementPct = getAchievementPct(actualRevenue, data.currentMonth.settings.monthlyTarget)
+    const monthYear = data.selectedMonth.monthYear
+    const monthDeals = data.deals.filter((deal) => isInMonth(deal.date, monthYear))
+    const monthPipeline = data.pipeline.filter((entry) => isInMonth(entry.date, monthYear))
+    const monthDailyActivity = data.dailyActivity.filter((entry) => isInMonth(entry.date, monthYear))
+
+    const monthlyRevenueMap = getMonthlyRevenueMap(data.deals, data.history)
+    const actualRevenue = monthlyRevenueMap.get(monthYear) ?? 0
+
+    const achievementPct = getAchievementPct(actualRevenue, data.selectedMonth.settings.monthlyTarget)
     const commissionTier = getCommissionTier(achievementPct)
     const commission = getCommission(actualRevenue, commissionTier.rate)
-    const grossTotal = getGrossTotal(data.currentMonth.settings.baseSalary, commission)
-    const missingRevenue = getMissingRevenue(data.currentMonth.settings.monthlyTarget, actualRevenue)
-    const record = getRecordStatus(actualRevenue, data.history)
+    const grossTotal = getGrossTotal(data.selectedMonth.settings.baseSalary, commission)
+    const missingRevenue = getMissingRevenue(data.selectedMonth.settings.monthlyTarget, actualRevenue)
+    const record = getRecordStatus(monthlyRevenueMap, monthYear)
 
-    const quarterSum = getQuarterSum(
-      data.currentMonth.monthYear,
-      actualRevenue,
-      data.history,
-      data.quarterTarget.quarterLabel,
-      data.quarterTarget.target,
-    )
-    const yearSum = getYearSum(
-      data.currentMonth.monthYear,
-      actualRevenue,
-      data.history,
-      data.yearTarget.year,
-      data.yearTarget.target,
-    )
+    const quarterSum = getQuarterSum(monthlyRevenueMap, data.quarterTarget.quarterLabel, data.quarterTarget.target)
+    const yearSum = getYearSum(monthlyRevenueMap, data.yearTarget.year, data.yearTarget.target)
 
     const scenarios = getStretchScenarios(
-      data.currentMonth.settings.monthlyTarget,
+      data.selectedMonth.settings.monthlyTarget,
       actualRevenue,
-      data.currentMonth.settings,
+      data.selectedMonth.settings,
     )
     const funnelItems = scenarios.map((scenario) => ({
       scenario,
-      funnel: getFunnel(scenario.requiredRevenue, data.currentMonth.settings),
+      funnel: getFunnel(scenario.requiredRevenue, data.selectedMonth.settings),
     }))
 
     const paceScenario = scenarios.find((scenario) => scenario.level === paceLevel) ?? scenarios[0]
-    const paceFunnel = getFunnel(paceScenario.requiredRevenue, data.currentMonth.settings)
-    const pace = getPaceStatus(paceFunnel, data.currentMonth)
+    const paceFunnel = getFunnel(paceScenario.requiredRevenue, data.selectedMonth.settings)
+    const pace = getPaceStatus(paceFunnel, data.selectedMonth, monthPipeline, monthDailyActivity)
 
     return {
+      monthYear,
+      monthDeals,
+      monthPipeline,
+      monthDailyActivity,
       actualRevenue,
       commission,
       commissionTier,
@@ -93,19 +93,39 @@ function App() {
   }
 
   const updateSettings = (settings: Settings) =>
-    update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, settings } }))
+    update((prev) => ({ ...prev, selectedMonth: { ...prev.selectedMonth, settings } }))
 
   const updateMonthYear = (monthYear: string) =>
-    update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, monthYear } }))
+    update((prev) => ({ ...prev, selectedMonth: { ...prev.selectedMonth, monthYear } }))
 
-  const updateDeals = (deals: Deal[]) =>
-    update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, deals } }))
+  // Alle drei Listen sind durchgehend gespeichert; die Komponenten bekommen nur die auf
+  // den gewählten Monat gefilterte Teilmenge und liefern diese bearbeitet zurück – hier
+  // wird sie mit den unveränderten Einträgen der übrigen Monate wieder zusammengeführt.
+  // Ändert der Nutzer ein Datum auf einen anderen Monat, verschwindet der Eintrag dadurch
+  // automatisch aus der aktuellen Ansicht und taucht beim neuen Monat auf.
+  const updateDeals = (monthDeals: Deal[]) =>
+    update((prev) => ({
+      ...prev,
+      deals: [...prev.deals.filter((deal) => !isInMonth(deal.date, prev.selectedMonth.monthYear)), ...monthDeals],
+    }))
 
-  const updatePipeline = (pipeline: PipelineEntry[]) =>
-    update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, pipeline } }))
+  const updatePipeline = (monthPipeline: PipelineEntry[]) =>
+    update((prev) => ({
+      ...prev,
+      pipeline: [
+        ...prev.pipeline.filter((entry) => !isInMonth(entry.date, prev.selectedMonth.monthYear)),
+        ...monthPipeline,
+      ],
+    }))
 
-  const updateDecisionCallsMade = (decisionCallsMade: number) =>
-    update((prev) => ({ ...prev, currentMonth: { ...prev.currentMonth, decisionCallsMade } }))
+  const updateDailyActivity = (monthDailyActivity: DailyActivityEntry[]) =>
+    update((prev) => ({
+      ...prev,
+      dailyActivity: [
+        ...prev.dailyActivity.filter((entry) => !isInMonth(entry.date, prev.selectedMonth.monthYear)),
+        ...monthDailyActivity,
+      ],
+    }))
 
   const updateHistory = (history: HistoryEntry[]) => update((prev) => ({ ...prev, history }))
 
@@ -130,7 +150,7 @@ function App() {
       <main className="app-grid">
         <ProgressOverview
           monthActual={derived.actualRevenue}
-          monthTarget={data.currentMonth.settings.monthlyTarget}
+          monthTarget={data.selectedMonth.settings.monthlyTarget}
           quarterLabel={data.quarterTarget.quarterLabel}
           quarterActual={derived.quarterSum.sum}
           quarterTarget={data.quarterTarget.target}
@@ -143,15 +163,15 @@ function App() {
           record={derived.record}
         />
 
-        <DailyActivityPanel decisionCallsMade={data.currentMonth.decisionCallsMade} onChange={updateDecisionCallsMade} />
+        <DailyActivityPanel entries={derived.monthDailyActivity} onChange={updateDailyActivity} />
         <PaceStatus level={paceLevel} onChangeLevel={setPaceLevel} pace={derived.pace} />
 
-        <PipelinePanel pipeline={data.currentMonth.pipeline} onChange={updatePipeline} />
-        <DealList deals={data.currentMonth.deals} onChange={updateDeals} />
+        <PipelinePanel pipeline={derived.monthPipeline} onChange={updatePipeline} />
+        <DealList deals={derived.monthDeals} onChange={updateDeals} />
       </main>
 
       <MonthSetup
-        currentMonth={data.currentMonth}
+        selectedMonth={data.selectedMonth}
         onChangeMonthYear={updateMonthYear}
         onChangeSettings={updateSettings}
         quarterTarget={data.quarterTarget}

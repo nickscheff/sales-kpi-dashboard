@@ -1,4 +1,9 @@
-import type { CurrentMonth, Deal, HistoryEntry, PipelineEntry, PipelineLabel, Settings } from '../types'
+import type { DailyActivityEntry, Deal, HistoryEntry, PipelineEntry, PipelineLabel, SelectedMonth, Settings } from '../types'
+
+/** Prüft, ob ein "YYYY-MM-DD"-Datum in den gegebenen "YYYY-MM"-Monat fällt. */
+export function isInMonth(date: string, monthYear: string): boolean {
+  return date.slice(0, 7) === monthYear
+}
 
 /** 1. Provision & Brutto */
 
@@ -54,7 +59,7 @@ export function getMissingRevenue(target: number, actual: number): number {
   return Math.max(0, target - actual)
 }
 
-/** 3. Quartals-/Jahresumsatz */
+/** 3. Monatsumsatz, Quartals-/Jahresumsatz */
 
 export function monthYearToQuarterLabel(monthYear: string): string {
   const [year, month] = monthYear.split('-').map(Number)
@@ -66,45 +71,42 @@ export function monthYearToYear(monthYear: string): number {
   return Number(monthYear.split('-')[0])
 }
 
+/**
+ * Vereinheitlichte Quelle für "erreichter Umsatz je Monat": aus den datierten Deals nach
+ * Monat gruppiert, anschließend von manuellen Monats-Historie-Einträgen überschrieben
+ * (Override gilt auch für den gerade aktiv gewählten Monat, falls dafür ein
+ * Historie-Eintrag existiert). Wird für Ist-Umsatz des gewählten Monats, Quartals-/
+ * Jahressumme und Rekord-Vergleich gleichermaßen verwendet.
+ */
+export function getMonthlyRevenueMap(deals: Deal[], history: HistoryEntry[]): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const deal of deals) {
+    const monthYear = deal.date.slice(0, 7)
+    map.set(monthYear, (map.get(monthYear) ?? 0) + deal.revenue)
+  }
+  for (const entry of history) {
+    map.set(entry.monthYear, entry.achieved)
+  }
+  return map
+}
+
 export interface PeriodSum {
   sum: number
   shortfall: number
 }
 
-export function getQuarterSum(
-  currentMonthYear: string,
-  currentMonthRevenue: number,
-  history: HistoryEntry[],
-  quarterLabel: string,
-  quarterTarget: number,
-): PeriodSum {
+export function getQuarterSum(monthlyRevenueMap: Map<string, number>, quarterLabel: string, quarterTarget: number): PeriodSum {
   let sum = 0
-  if (monthYearToQuarterLabel(currentMonthYear) === quarterLabel) {
-    sum += currentMonthRevenue
-  }
-  for (const entry of history) {
-    if (monthYearToQuarterLabel(entry.monthYear) === quarterLabel) {
-      sum += entry.achieved
-    }
+  for (const [monthYear, revenue] of monthlyRevenueMap) {
+    if (monthYearToQuarterLabel(monthYear) === quarterLabel) sum += revenue
   }
   return { sum, shortfall: Math.max(0, quarterTarget - sum) }
 }
 
-export function getYearSum(
-  currentMonthYear: string,
-  currentMonthRevenue: number,
-  history: HistoryEntry[],
-  year: number,
-  yearTarget: number,
-): PeriodSum {
+export function getYearSum(monthlyRevenueMap: Map<string, number>, year: number, yearTarget: number): PeriodSum {
   let sum = 0
-  if (monthYearToYear(currentMonthYear) === year) {
-    sum += currentMonthRevenue
-  }
-  for (const entry of history) {
-    if (monthYearToYear(entry.monthYear) === year) {
-      sum += entry.achieved
-    }
+  for (const [monthYear, revenue] of monthlyRevenueMap) {
+    if (monthYearToYear(monthYear) === year) sum += revenue
   }
   return { sum, shortfall: Math.max(0, yearTarget - sum) }
 }
@@ -117,11 +119,19 @@ export interface RecordStatus {
   diffToRecord: number
 }
 
-export function getRecordStatus(actual: number, history: HistoryEntry[]): RecordStatus {
-  if (history.length === 0) {
+/** Vergleicht den gewählten Monat gegen den höchsten Wert aller ANDEREN Monate in der Map. */
+export function getRecordStatus(monthlyRevenueMap: Map<string, number>, selectedMonthYear: string): RecordStatus {
+  const actual = monthlyRevenueMap.get(selectedMonthYear) ?? 0
+
+  let recordValue: number | null = null
+  for (const [monthYear, revenue] of monthlyRevenueMap) {
+    if (monthYear === selectedMonthYear) continue
+    if (recordValue === null || revenue > recordValue) recordValue = revenue
+  }
+
+  if (recordValue === null) {
     return { isRecord: actual > 0, recordValue: null, diffToRecord: 0 }
   }
-  const recordValue = Math.max(...history.map((entry) => entry.achieved))
   const isRecord = actual > recordValue
   return { isRecord, recordValue, diffToRecord: isRecord ? 0 : recordValue - actual }
 }
@@ -234,6 +244,7 @@ export interface PipelineSummaryItem {
   isOpen: boolean
 }
 
+/** Erwartet bereits auf den gewünschten Monat gefilterte Pipeline-Einträge. */
 export function getPipelineSummary(pipeline: PipelineEntry[]): PipelineSummaryItem[] {
   return PIPELINE_LABELS.map((label) => ({
     label,
@@ -242,7 +253,10 @@ export function getPipelineSummary(pipeline: PipelineEntry[]): PipelineSummaryIt
   }))
 }
 
-/** Anzahl durchgeführter Termine, optional nur die vor `beforeDate` (Format "YYYY-MM-DD"). */
+/**
+ * Anzahl durchgeführter Termine, optional nur die vor `beforeDate` (Format "YYYY-MM-DD").
+ * Erwartet bereits auf den gewünschten Monat gefilterte Pipeline-Einträge.
+ */
 export function getHeldMeetingsCount(pipeline: PipelineEntry[], beforeDate?: string): number {
   return pipeline.filter(
     (entry) => HELD_MEETING_LABELS.includes(entry.label) && (beforeDate === undefined || entry.date < beforeDate),
@@ -293,23 +307,34 @@ export interface PaceStatus {
   heldMeetings: PaceMetric
 }
 
-export function getPaceStatus(funnel: Funnel, currentMonth: CurrentMonth, today: Date = new Date()): PaceStatus {
-  const isCurrentMonth = currentMonth.monthYear === todayISODate(today).slice(0, 7)
-  const elapsedWorkDays = getElapsedWorkDays(currentMonth.monthYear, currentMonth.settings.workDays, today)
-  const ratio = currentMonth.settings.workDays > 0 ? elapsedWorkDays / currentMonth.settings.workDays : 0
+/**
+ * `monthPipeline` und `monthDailyActivity` müssen bereits auf `selectedMonth.monthYear`
+ * gefiltert sein (siehe `isInMonth`).
+ */
+export function getPaceStatus(
+  funnel: Funnel,
+  selectedMonth: SelectedMonth,
+  monthPipeline: PipelineEntry[],
+  monthDailyActivity: DailyActivityEntry[],
+  today: Date = new Date(),
+): PaceStatus {
+  const isCurrentMonth = selectedMonth.monthYear === todayISODate(today).slice(0, 7)
+  const elapsedWorkDays = getElapsedWorkDays(selectedMonth.monthYear, selectedMonth.settings.workDays, today)
+  const ratio = selectedMonth.settings.workDays > 0 ? elapsedWorkDays / selectedMonth.settings.workDays : 0
 
   const requiredDecisionCalls = funnel.decisionCalls.perMonth * ratio
   const requiredHeldMeetings = funnel.heldMeetings.perMonth * ratio
-  const actualHeldMeetings = getHeldMeetingsCount(currentMonth.pipeline, todayISODate(today))
+  const actualDecisionCalls = monthDailyActivity.reduce((sum, entry) => sum + entry.count, 0)
+  const actualHeldMeetings = getHeldMeetingsCount(monthPipeline, todayISODate(today))
 
   return {
     isCurrentMonth,
     elapsedWorkDays,
-    totalWorkDays: currentMonth.settings.workDays,
+    totalWorkDays: selectedMonth.settings.workDays,
     decisionCalls: {
       required: requiredDecisionCalls,
-      actual: currentMonth.decisionCallsMade,
-      diff: Math.round(currentMonth.decisionCallsMade - requiredDecisionCalls),
+      actual: actualDecisionCalls,
+      diff: Math.round(actualDecisionCalls - requiredDecisionCalls),
     },
     heldMeetings: {
       required: requiredHeldMeetings,

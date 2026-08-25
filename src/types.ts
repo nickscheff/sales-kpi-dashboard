@@ -1,4 +1,4 @@
-/** Einstellungen für den aktuellen Monat. Alle *Rate-Felder sind Prozentwerte (z.B. 8 = 8%). */
+/** Einstellungen für den gewählten Monat. Alle *Rate-Felder sind Prozentwerte (z.B. 8 = 8%). */
 export interface Settings {
   monthlyTarget: number
   baseSalary: number
@@ -14,6 +14,8 @@ export interface Deal {
   id: string
   company: string
   revenue: number
+  /** Format "YYYY-MM-DD" – bestimmt, welchem Monat der Deal zugerechnet wird. */
+  date: string
 }
 
 export interface HistoryEntry {
@@ -46,23 +48,32 @@ export type PipelineLabel = 'Discovery Call' | 'Follow-Up Call' | 'No-Show/Cance
 
 export interface PipelineEntry {
   id: string
-  /** Format "YYYY-MM-DD" */
+  /** Format "YYYY-MM-DD" – bestimmt, welchem Monat der Termin zugerechnet wird. */
   date: string
   label: PipelineLabel
+  company?: string
 }
 
-export interface CurrentMonth {
+export interface DailyActivityEntry {
+  id: string
+  /** Format "YYYY-MM-DD" */
+  date: string
+  count: number
+}
+
+/** Nur noch Filter/Konfiguration für den gerade betrachteten Monat, kein Datenblock mehr. */
+export interface SelectedMonth {
   /** Format "YYYY-MM" */
   monthYear: string
   settings: Settings
-  deals: Deal[]
-  pipeline: PipelineEntry[]
-  /** Additiver Monats-Zähler für geführte Entscheider-Gespräche. */
-  decisionCallsMade: number
 }
 
 export interface DashboardData {
-  currentMonth: CurrentMonth
+  selectedMonth: SelectedMonth
+  /** Durchgehend über alle Monate, nach `date` gefiltert für die jeweilige Monats-Ansicht. */
+  deals: Deal[]
+  pipeline: PipelineEntry[]
+  dailyActivity: DailyActivityEntry[]
   quarterTarget: QuarterTarget
   yearTarget: YearTarget
   history: HistoryEntry[]
