@@ -547,6 +547,18 @@
 
 /* Pipeline */
 
+.lost-lead-reminder {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.lost-lead-reminder .pipeline-section-title {
+  margin-top: 0;
+}
+
 .pipeline-summary {
   display: flex;
   flex-wrap: wrap;

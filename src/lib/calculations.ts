@@ -284,6 +284,21 @@ export function isRealCurrentMonth(monthYear: string, today: Date = new Date()):
   return monthYear === todayISODate(today).slice(0, 7)
 }
 
+export const LOST_LEAD_STALE_MONTHS = 3
+
+/**
+ * "Lost"-Einträge, deren Termin mind. `months` Kalendermonate zurückliegt - Kandidaten für
+ * einen erneuten Reaktivierungs-Anruf. Erwartet die VOLLSTÄNDIGE, ungefilterte Pipeline
+ * (nicht nur den gewählten Monat), da der Reminder unabhängig vom gewählten Monat gilt.
+ * Älteste zuerst.
+ */
+export function getStaleLostLeads(pipeline: PipelineEntry[], months: number, today: Date = new Date()): PipelineEntry[] {
+  const threshold = todayISODate(new Date(today.getFullYear(), today.getMonth() - months, today.getDate()))
+  return pipeline
+    .filter((entry) => entry.label === 'Lost' && entry.date < threshold)
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
 function countWeekdaysUpTo(year: number, month: number, throughDay: number): number {
   let count = 0
   for (let day = 1; day <= throughDay; day++) {

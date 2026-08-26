@@ -204,6 +204,7 @@ function App() {
 
         <PipelinePanel
           pipeline={derived.monthPipeline}
+          allMonthsPipeline={data.pipeline}
           onChange={updatePipeline}
           onCreateDeal={closeDealFromPipelineEntry}
         />

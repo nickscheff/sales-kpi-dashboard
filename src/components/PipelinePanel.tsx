@@ -4,10 +4,12 @@ import { Collapsible } from './ui/Collapsible'
 import { PillButton } from './ui/PillButton'
 import {
   CLOSED_PIPELINE_LABELS,
+  LOST_LEAD_STALE_MONTHS,
   OPEN_PIPELINE_LABELS,
   PIPELINE_LABELS,
   REACTIVATABLE_PIPELINE_LABELS,
   getPipelineSummary,
+  getStaleLostLeads,
   todayISODate,
 } from '../lib/calculations'
 import { newId } from '../lib/id'
@@ -15,6 +17,8 @@ import type { PipelineEntry, PipelineLabel } from '../types'
 
 interface Props {
   pipeline: PipelineEntry[]
+  /** Vollständige, ungefilterte Pipeline (alle Monate) - für den Lost-Lead-Reminder. */
+  allMonthsPipeline: PipelineEntry[]
   onChange: (pipeline: PipelineEntry[]) => void
   onCreateDeal: (entry: PipelineEntry, revenue: number) => void
 }
@@ -27,13 +31,17 @@ function defaultFollowUpDate(): string {
   return todayISODate(new Date(Date.now() + FOLLOW_UP_DEFAULT_OFFSET_DAYS * 24 * 60 * 60 * 1000))
 }
 
-export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
+export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateDeal }: Props) {
   const [dealRevenueDrafts, setDealRevenueDrafts] = useState<Record<string, number>>({})
   const [closingEntryIds, setClosingEntryIds] = useState<Set<string>>(new Set())
   const [reactivatingEntryIds, setReactivatingEntryIds] = useState<Set<string>>(new Set())
   const [reactivateDateDrafts, setReactivateDateDrafts] = useState<Record<string, string>>({})
   const [planningFollowUpEntryIds, setPlanningFollowUpEntryIds] = useState<Set<string>>(new Set())
   const [followUpDateDrafts, setFollowUpDateDrafts] = useState<Record<string, string>>({})
+  const [reachingOutEntryIds, setReachingOutEntryIds] = useState<Set<string>>(new Set())
+  const [reachOutDateDrafts, setReachOutDateDrafts] = useState<Record<string, string>>({})
+
+  const staleLostLeads = getStaleLostLeads(allMonthsPipeline, LOST_LEAD_STALE_MONTHS)
   // Zwei unabhängige Filter-States statt einem gemeinsamen: die obere Leiste filtert nur
   // Offen, die eigene Mini-Leiste über "Abgeschlossen" nur diese Tabelle. No-Show/Cancel
   // hat keinen Filter (die Tabelle enthält ohnehin immer nur dieses eine Label).
@@ -153,6 +161,32 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
     // stattgefundenen Termin) - neuer, unabhängiger Eintrag für den Folgetermin.
     onChange([...pipeline, { id: newId(), date, label: 'Follow-Up Call', company: entry.company }])
     cancelPlanFollowUp(entry.id)
+  }
+
+  const startReachOut = (id: string) => {
+    setReachingOutEntryIds((prev) => new Set(prev).add(id))
+    setReachOutDateDrafts((prev) => ({ ...prev, [id]: todayISODate() }))
+  }
+  const cancelReachOut = (id: string) => {
+    setReachingOutEntryIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    setReachOutDateDrafts((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+  const confirmReachOut = (entry: PipelineEntry) => {
+    const date = reachOutDateDrafts[entry.id] ?? todayISODate()
+    // Der alte Lost-Eintrag bleibt komplett unangetastet (Label/Datum unverändert) - sonst
+    // würde sich rückwirkend die Monats-Statistik des damaligen Monats verändern und die
+    // Historie "Termin fand statt, ging aber lost" ginge verloren. Nur ein neuer,
+    // unabhängiger Eintrag für den erneuten Kontaktversuch.
+    onChange([...pipeline, { id: newId(), date, label: 'Discovery Call', company: entry.company }])
+    cancelReachOut(entry.id)
   }
 
   const renderRow = (entry: PipelineEntry, section: Section) => (
@@ -277,6 +311,53 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
 
   return (
     <Card title="Termin-Pipeline" subtitle="Gebuchte Termine nach Ausgang, dieser Monat" className="span-2">
+      {staleLostLeads.length > 0 && (
+        <div className="lost-lead-reminder">
+          <h3 className="pipeline-section-title">⏰ Alte Lost-Leads erneut anrufen ({staleLostLeads.length})</h3>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Datum</th>
+                  <th>Firma</th>
+                  <th>Aktion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {staleLostLeads.map((entry) => (
+                  <tr key={entry.id}>
+                    <td>{entry.date}</td>
+                    <td>{entry.company || '–'}</td>
+                    <td>
+                      {reachingOutEntryIds.has(entry.id) ? (
+                        <div className="pipeline-deal-action">
+                          <span className="field-label">Neuer Termin am</span>
+                          <input
+                            type="date"
+                            value={reachOutDateDrafts[entry.id] ?? todayISODate()}
+                            onChange={(e) => setReachOutDateDrafts((prev) => ({ ...prev, [entry.id]: e.target.value }))}
+                          />
+                          <PillButton type="button" onClick={() => confirmReachOut(entry)}>
+                            Bestätigen
+                          </PillButton>
+                          <PillButton variant="ghost" type="button" onClick={() => cancelReachOut(entry.id)}>
+                            Abbrechen
+                          </PillButton>
+                        </div>
+                      ) : (
+                        <PillButton type="button" onClick={() => startReachOut(entry.id)}>
+                          → Erneut kontaktieren
+                        </PillButton>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="pipeline-summary">
         <button
           type="button"
