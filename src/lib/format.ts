@@ -9,6 +9,8 @@ const percentFormatter = new Intl.NumberFormat('de-DE', {
   maximumFractionDigits: 1,
 })
 
+const monthYearFormatter = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' })
+
 function safe(value: number): number {
   return Number.isFinite(value) ? value : 0
 }
@@ -26,4 +28,10 @@ export function formatNumber(value: number, decimals = 1): string {
     maximumFractionDigits: decimals,
     minimumFractionDigits: 0,
   }).format(safe(value))
+}
+
+/** "YYYY-MM" -> z.B. "August 2026". */
+export function formatMonthYearLabel(monthYear: string): string {
+  const [year, month] = monthYear.split('-').map(Number)
+  return monthYearFormatter.format(new Date(year, month - 1, 1))
 }

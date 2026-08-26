@@ -71,6 +71,13 @@ export function monthYearToYear(monthYear: string): number {
   return Number(monthYear.split('-')[0])
 }
 
+/** Verschiebt "YYYY-MM" um `delta` Monate (negativ = zurück, positiv = vor). */
+export function shiftMonthYear(monthYear: string, delta: number): string {
+  const [year, month] = monthYear.split('-').map(Number)
+  const date = new Date(year, month - 1 + delta, 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
 /**
  * Vereinheitlichte Quelle für "erreichter Umsatz je Monat": aus den datierten Deals nach
  * Monat gruppiert, anschließend von manuellen Monats-Historie-Einträgen überschrieben

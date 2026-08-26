@@ -34,6 +34,22 @@
   margin-top: 6px;
 }
 
+.month-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.month-switcher-label {
+  min-width: 200px;
+  text-align: center;
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 600;
+}
+
 .error-banner {
   color: #fca5a5;
   background: rgba(239, 68, 68, 0.1);

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { DailyActivityPanel } from './components/DailyActivityPanel'
 import { DealList } from './components/DealList'
 import { MonthSetup } from './components/MonthSetup'
+import { MonthSwitcher } from './components/MonthSwitcher'
 import { PaceStatus } from './components/PaceStatus'
 import { PipelinePanel } from './components/PipelinePanel'
 import { ProgressOverview } from './components/ProgressOverview'
@@ -168,6 +169,8 @@ function App() {
         </div>
         <StatusBadge status={status} />
       </header>
+
+      <MonthSwitcher monthYear={derived.monthYear} onChangeMonthYear={updateMonthYear} />
 
       {status === 'error' && errorMessage && <p className="error-banner">{errorMessage}</p>}
 
