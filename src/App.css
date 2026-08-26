@@ -400,11 +400,13 @@
     padding: 10px 16px;
   }
 
-  /* Akkordeon im Offen-Bereich: eingeklappte Karte zeigt nur die Übersichtszeile,
-     aufgeklappt die bisherigen Detail-Zellen (unverändert). Gilt nur für Zeilen mit
-     .pipeline-row-collapsible - No-Show/Cancel, Abgeschlossen und Lost-Lead-Reminder
-     rendern diese Klasse gar nicht und bleiben unverändert immer voll sichtbar. */
-  .pipeline-row-collapsible[data-expanded='false'] .pipeline-row-summary {
+  /* Akkordeon im Offen-Bereich: Übersichtszeile bleibt in beiden Zuständen sichtbar (auch
+     aufgeklappt, oberhalb der Detail-Felder) - erneuter Tap klappt so wieder zu, der Chevron
+     zeigt weiterhin die Richtung. Nur die Detail-Zellen werden je nach Zustand ein-/
+     ausgeblendet. Gilt nur für Zeilen mit .pipeline-row-collapsible - No-Show/Cancel,
+     Abgeschlossen und Lost-Lead-Reminder rendern diese Klasse gar nicht und bleiben
+     unverändert immer voll sichtbar. */
+  .pipeline-row-collapsible .pipeline-row-summary {
     display: block;
     padding: 2px 0;
   }
