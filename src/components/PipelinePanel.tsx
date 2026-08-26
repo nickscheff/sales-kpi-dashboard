@@ -299,7 +299,7 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
             </PillButton>
           </div>
         ) : (
-          <PillButton type="button" onClick={() => startEditDate(entry)}>
+          <PillButton variant="muted" type="button" onClick={() => startEditDate(entry)}>
             {formatFullDate(entry.date)} ✎
           </PillButton>
         )}

@@ -124,7 +124,7 @@ export function DealList({ deals, onChange }: Props) {
                         </PillButton>
                       </div>
                     ) : (
-                      <PillButton type="button" onClick={() => startEditDate(deal)}>
+                      <PillButton variant="muted" type="button" onClick={() => startEditDate(deal)}>
                         {formatFullDate(deal.date)} ✎
                       </PillButton>
                     )}

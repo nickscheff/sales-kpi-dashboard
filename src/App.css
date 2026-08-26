@@ -237,6 +237,20 @@
   color: #fca5a5;
 }
 
+/* Zurückhaltend für nachrangige Aktionen (z.B. Datum ändern) - klar abgesetzt vom grünen
+   Primär-Look, aber ohne die rötliche Abbrechen/Löschen-Signalfarbe von .pill-ghost. */
+.pill-muted {
+  padding: 7px 14px;
+  border-color: var(--border-strong);
+  background: var(--bg-inset);
+  color: var(--text-muted);
+}
+
+.pill-muted:hover {
+  background: var(--border-strong);
+  color: var(--text);
+}
+
 /* Tables */
 
 .table-scroll {

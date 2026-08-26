@@ -10,6 +10,7 @@ import { QuarterYearHistorySetup } from './components/QuarterYearHistorySetup'
 import { StatusBadge } from './components/StatusBadge'
 import {
   getAchievementPct,
+  getBookingCatchUpPace,
   getCatchUpPace,
   getCommission,
   getCommissionTier,
@@ -70,6 +71,7 @@ function App() {
     const paceFunnel = getFunnel(paceScenario.requiredRevenue, settings)
     const pace = getPaceStatus(paceFunnel, monthYear, settings, monthPipeline, monthDailyActivity)
     const catchUpPace = getCatchUpPace(paceFunnel, monthYear, settings, pace)
+    const bookingCatchUpPace = getBookingCatchUpPace(paceFunnel, monthYear, settings, pace, monthPipeline)
 
     const isViewingOtherMonth = !isRealCurrentMonth(monthYear)
 
@@ -93,6 +95,7 @@ function App() {
       funnelItems,
       pace,
       catchUpPace,
+      bookingCatchUpPace,
       isViewingOtherMonth,
     }
   }, [data, paceLevel])
@@ -225,6 +228,7 @@ function App() {
           entries={derived.monthDailyActivity}
           onChange={updateDailyActivity}
           catchUpPace={derived.catchUpPace}
+          bookingCatchUpPace={derived.bookingCatchUpPace}
           paceLevel={paceLevel}
         />
         <PaceStatus level={paceLevel} onChangeLevel={setPaceLevel} pace={derived.pace} />

@@ -492,13 +492,39 @@ export interface CatchUpPace {
 }
 
 /**
- * Dynamischer "Aufhol-Wert" statt statischem Monatsdurchschnitt: das Rest-Soll (bezogen auf
- * dieselbe Stretch-Goal-Stufe wie `funnel`) verteilt auf die noch verbleibenden Arbeitstage
- * bzw. Wochen bis Monatsende. Steigt, wenn man hinter dem Soll liegt, sinkt, wenn man voraus
- * ist. `pace` ist der bereits berechnete PaceStatus für dieselbe Stufe (liefert isCurrentMonth
- * und die bisher erfassten Gespräche) - vermeidet doppelte Berechnung derselben Werte.
- * An den letzten Arbeitstagen des Monats (remainingWorkDays = 0) wird das Rest-Soll direkt
- * als perDay/perWeek gezeigt statt durch 0 zu teilen.
+ * Gemeinsame Berechnung für alle Aufhol-Werte: das Rest-Soll (`perMonthTarget - actual`)
+ * verteilt auf die noch verbleibenden Arbeitstage bzw. Wochen bis Monatsende, statt eines
+ * statischen Monatsdurchschnitts. Steigt, wenn man hinter dem Soll liegt, sinkt, wenn man
+ * voraus ist. An den letzten Arbeitstagen des Monats (remainingWorkDays = 0) wird das
+ * Rest-Soll direkt als perDay/perWeek gezeigt statt durch 0 zu teilen.
+ */
+function buildCatchUpPace(
+  perMonthTarget: number,
+  actual: number,
+  isCurrentMonth: boolean,
+  monthYear: string,
+  settings: Settings,
+  today: Date,
+): CatchUpPace {
+  const remainingTarget = Math.max(0, perMonthTarget - actual)
+  const remainingWorkDays = isCurrentMonth ? getRemainingWorkDays(monthYear, settings.workDays, today) : 0
+  const remainingWeeks = remainingWorkDays / WORK_DAYS_PER_WEEK
+
+  return {
+    isCurrentMonth,
+    remainingTarget,
+    remainingWorkDays,
+    remainingWeeks,
+    perDay: remainingWorkDays > 0 ? remainingTarget / remainingWorkDays : remainingTarget,
+    perWeek: remainingWeeks > 0 ? remainingTarget / remainingWeeks : remainingTarget,
+  }
+}
+
+/**
+ * Dynamischer Aufhol-Wert für Entscheider-Gespräche (bezogen auf dieselbe Stretch-Goal-
+ * Stufe wie `funnel`). `pace` ist der bereits berechnete PaceStatus für dieselbe Stufe
+ * (liefert isCurrentMonth und die bisher erfassten Gespräche) - vermeidet doppelte
+ * Berechnung derselben Werte.
  */
 export function getCatchUpPace(
   funnel: Funnel,
@@ -507,16 +533,23 @@ export function getCatchUpPace(
   pace: PaceStatus,
   today: Date = new Date(),
 ): CatchUpPace {
-  const remainingTarget = Math.max(0, funnel.decisionCalls.perMonth - pace.decisionCalls.actual)
-  const remainingWorkDays = pace.isCurrentMonth ? getRemainingWorkDays(monthYear, settings.workDays, today) : 0
-  const remainingWeeks = remainingWorkDays / WORK_DAYS_PER_WEEK
+  return buildCatchUpPace(funnel.decisionCalls.perMonth, pace.decisionCalls.actual, pace.isCurrentMonth, monthYear, settings, today)
+}
 
-  return {
-    isCurrentMonth: pace.isCurrentMonth,
-    remainingTarget,
-    remainingWorkDays,
-    remainingWeeks,
-    perDay: remainingWorkDays > 0 ? remainingTarget / remainingWorkDays : remainingTarget,
-    perWeek: remainingWeeks > 0 ? remainingTarget / remainingWeeks : remainingTarget,
-  }
+/**
+ * Dynamischer Aufhol-Wert für gebuchte Termine (funnel.bookedMeetings, inkl. No-Show/
+ * Cancel-Rate-Verrechnung). "Bereits gebucht" zählt JEDEN Pipeline-Eintrag im Monat,
+ * unabhängig von Label oder ob der Termin schon stattgefunden hat - eine Buchung zählt in
+ * dem Moment, in dem der Termin angelegt wird, nicht erst beim Durchführen. `monthPipeline`
+ * muss bereits auf `monthYear` gefiltert sein (siehe `isInMonth`).
+ */
+export function getBookingCatchUpPace(
+  funnel: Funnel,
+  monthYear: string,
+  settings: Settings,
+  pace: PaceStatus,
+  monthPipeline: PipelineEntry[],
+  today: Date = new Date(),
+): CatchUpPace {
+  return buildCatchUpPace(funnel.bookedMeetings.perMonth, monthPipeline.length, pace.isCurrentMonth, monthYear, settings, today)
 }
