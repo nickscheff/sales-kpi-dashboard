@@ -803,6 +803,10 @@
   max-width: 120px;
 }
 
+.daily-activity-catchup {
+  margin-top: 18px;
+}
+
 /* Pipeline */
 
 .lost-lead-reminder {

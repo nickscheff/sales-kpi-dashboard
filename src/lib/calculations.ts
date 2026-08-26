@@ -412,6 +412,19 @@ export function getElapsedWorkDays(monthYear: string, workDays: number, today: D
   return isPast ? workDays : 0
 }
 
+/**
+ * Verbleibende Arbeitstage bis Monatsende, INKLUSIVE heute (im Gegensatz zu
+ * `getElapsedWorkDays`, das heute als bereits verstrichen zählt). Auf `workDays` gedeckelt,
+ * genau wie `getElapsedWorkDays` - das Arbeitstage-Budget aus den Settings ist die
+ * Obergrenze, nicht die echte Kalender-Wochentagszahl. Nur sinnvoll für den echten
+ * aktuellen Kalendermonat; Aufrufer prüfen das vorher (siehe `isRealCurrentMonth`).
+ */
+export function getRemainingWorkDays(monthYear: string, workDays: number, today: Date = new Date()): number {
+  const [year, month] = monthYear.split('-').map(Number)
+  const elapsedBeforeToday = countWeekdaysUpTo(year, month, today.getDate() - 1)
+  return Math.max(0, workDays - Math.min(workDays, elapsedBeforeToday))
+}
+
 export interface PaceMetric {
   required: number
   actual: number
@@ -463,5 +476,47 @@ export function getPaceStatus(
       actual: actualHeldMeetings,
       diff: Math.round(actualHeldMeetings - requiredHeldMeetings),
     },
+  }
+}
+
+export interface CatchUpPace {
+  isCurrentMonth: boolean
+  /** Noch fehlende Entscheider-Gespräche für den Monat (Gesamt-Soll minus bereits erfasste). */
+  remainingTarget: number
+  remainingWorkDays: number
+  remainingWeeks: number
+  /** Nötig pro verbleibendem Arbeitstag (inkl. heute), um das Monatsziel noch zu erreichen. */
+  perDay: number
+  /** Nötig pro verbleibender Woche, um das Monatsziel noch zu erreichen. */
+  perWeek: number
+}
+
+/**
+ * Dynamischer "Aufhol-Wert" statt statischem Monatsdurchschnitt: das Rest-Soll (bezogen auf
+ * dieselbe Stretch-Goal-Stufe wie `funnel`) verteilt auf die noch verbleibenden Arbeitstage
+ * bzw. Wochen bis Monatsende. Steigt, wenn man hinter dem Soll liegt, sinkt, wenn man voraus
+ * ist. `pace` ist der bereits berechnete PaceStatus für dieselbe Stufe (liefert isCurrentMonth
+ * und die bisher erfassten Gespräche) - vermeidet doppelte Berechnung derselben Werte.
+ * An den letzten Arbeitstagen des Monats (remainingWorkDays = 0) wird das Rest-Soll direkt
+ * als perDay/perWeek gezeigt statt durch 0 zu teilen.
+ */
+export function getCatchUpPace(
+  funnel: Funnel,
+  monthYear: string,
+  settings: Settings,
+  pace: PaceStatus,
+  today: Date = new Date(),
+): CatchUpPace {
+  const remainingTarget = Math.max(0, funnel.decisionCalls.perMonth - pace.decisionCalls.actual)
+  const remainingWorkDays = pace.isCurrentMonth ? getRemainingWorkDays(monthYear, settings.workDays, today) : 0
+  const remainingWeeks = remainingWorkDays / WORK_DAYS_PER_WEEK
+
+  return {
+    isCurrentMonth: pace.isCurrentMonth,
+    remainingTarget,
+    remainingWorkDays,
+    remainingWeeks,
+    perDay: remainingWorkDays > 0 ? remainingTarget / remainingWorkDays : remainingTarget,
+    perWeek: remainingWeeks > 0 ? remainingTarget / remainingWeeks : remainingTarget,
   }
 }
