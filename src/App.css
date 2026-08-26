@@ -363,6 +363,14 @@
   .table td input[type='date'] {
     min-width: 0;
     max-width: 100%;
+    /* iOS Safari zeichnet den Feldwert (z.B. "27. Aug 2026") offenbar unabhängig von der
+       Box-Breite - min-width/max-width allein reichten nicht. overflow:hidden kappt den
+       sichtbar gezeichneten Inhalt hart an der Box-Kante, reduziertes horizontales Padding
+       gibt dem internen Steuerelement zusätzlich etwas mehr Platz, damit es möglichst gar
+       nicht erst zum Clipping kommt. */
+    overflow: hidden;
+    padding-left: 6px;
+    padding-right: 6px;
   }
 
   /* Inputs innerhalb einer Aktions-Zeile (z.B. Umsatz/Datum neben Bestätigen/Abbrechen)
