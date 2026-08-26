@@ -54,6 +54,8 @@ export interface PipelineEntry {
   company?: string
   /** Wurde aus diesem Eintrag bereits einmalig ein Deal übernommen? Kein Verweis, nur Flag. */
   dealCreated?: boolean
+  /** Wurde dieser (alte) Lost-Lead bereits einmalig erneut kontaktiert? Kein Verweis, nur Flag. */
+  reachedOutAgain?: boolean
 }
 
 export interface DailyActivityEntry {

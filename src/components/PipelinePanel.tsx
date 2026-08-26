@@ -22,6 +22,7 @@ interface Props {
   allMonthsPipeline: PipelineEntry[]
   onChange: (pipeline: PipelineEntry[]) => void
   onCreateDeal: (entry: PipelineEntry, revenue: number) => void
+  onReachOutToLostLead: (entry: PipelineEntry, date: string) => void
 }
 
 type Section = 'open' | 'noShow' | 'closed'
@@ -32,7 +33,7 @@ function defaultFollowUpDate(): string {
   return todayISODate(new Date(Date.now() + FOLLOW_UP_DEFAULT_OFFSET_DAYS * 24 * 60 * 60 * 1000))
 }
 
-export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateDeal }: Props) {
+export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateDeal, onReachOutToLostLead }: Props) {
   const [dealRevenueDrafts, setDealRevenueDrafts] = useState<Record<string, number>>({})
   const [closingEntryIds, setClosingEntryIds] = useState<Set<string>>(new Set())
   const [reactivatingEntryIds, setReactivatingEntryIds] = useState<Set<string>>(new Set())
@@ -183,11 +184,13 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
   }
   const confirmReachOut = (entry: PipelineEntry) => {
     const date = reachOutDateDrafts[entry.id] ?? todayISODate()
-    // Der alte Lost-Eintrag bleibt komplett unangetastet (Label/Datum unverändert) - sonst
-    // würde sich rückwirkend die Monats-Statistik des damaligen Monats verändern und die
-    // Historie "Termin fand statt, ging aber lost" ginge verloren. Nur ein neuer,
-    // unabhängiger Eintrag für den erneuten Kontaktversuch.
-    onChange([...pipeline, { id: newId(), date, label: 'Discovery Call', company: entry.company }])
+    // Eigene Prop statt onChange: der alte Lost-Eintrag liegt i.d.R. in einem anderen
+    // Monat als dem gerade gewählten und ist in der monatsgefilterten `pipeline`-Prop
+    // nicht enthalten - onReachOutToLostLead arbeitet in App.tsx auf der vollen Liste.
+    // Label/Datum des alten Eintrags bleiben unverändert, nur das reachedOutAgain-Flag
+    // wird gesetzt (verhindert erneutes Auftauchen im Reminder, keine Verfälschung der
+    // damaligen Monats-Statistik).
+    onReachOutToLostLead(entry, date)
     cancelReachOut(entry.id)
   }
 

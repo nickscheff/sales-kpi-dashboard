@@ -144,6 +144,21 @@ function App() {
       pipeline: prev.pipeline.map((p) => (p.id === entry.id ? { ...p, label: 'Closed Deal', dealCreated: true } : p)),
     }))
 
+  // Erneuter Kontaktversuch bei einem alten Lost-Lead: neuer, unabhängiger Discovery-Call-
+  // Eintrag + der alte Lost-Eintrag wird als "reachedOutAgain" markiert (Label/Datum bleiben
+  // unverändert), in einem Update. Arbeitet bewusst auf der VOLLEN prev.pipeline statt über
+  // die monatsgefilterte onChange-Prop, da der alte Lost-Eintrag i.d.R. in einem anderen
+  // Monat liegt als dem gerade angezeigten und über die gefilterte Teilmenge nicht
+  // zuverlässig gefunden/markiert werden könnte.
+  const reachOutToLostLead = (entry: PipelineEntry, date: string) =>
+    update((prev) => ({
+      ...prev,
+      pipeline: [
+        ...prev.pipeline.map((p) => (p.id === entry.id ? { ...p, reachedOutAgain: true } : p)),
+        { id: newId(), date, label: 'Discovery Call', company: entry.company ?? '' },
+      ],
+    }))
+
   const updateDailyActivity = (monthDailyActivity: DailyActivityEntry[]) =>
     update((prev) => ({
       ...prev,
@@ -207,6 +222,7 @@ function App() {
           allMonthsPipeline={data.pipeline}
           onChange={updatePipeline}
           onCreateDeal={closeDealFromPipelineEntry}
+          onReachOutToLostLead={reachOutToLostLead}
         />
         <DealList deals={derived.monthDeals} onChange={updateDeals} />
       </main>
