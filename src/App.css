@@ -497,6 +497,71 @@
   transition: width 0.2s ease;
 }
 
+/* Gold-Tracker: bewusst abgesetzter "epischer" Akzent (--gold statt --accent), um das
+   Erreichen einer neuen Provisionsstufe als besonderen Moment hervorzuheben. */
+.gold-tracker {
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--gold-border);
+  background: linear-gradient(135deg, var(--gold-soft), transparent);
+  box-shadow: 0 0 24px -10px var(--gold-border);
+}
+
+.gold-tracker-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.gold-tracker-icon {
+  font-size: 16px;
+}
+
+.gold-tracker-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--gold);
+  letter-spacing: 0.02em;
+}
+
+.gold-tracker-amount {
+  font-family: var(--font-heading);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1.2;
+}
+
+.gold-tracker-subtext {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.gold-tracker-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.gold-tracker-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold-strong), var(--gold));
+  transition: width 0.2s ease;
+}
+
+.gold-tracker-maxed {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--gold);
+}
+
 /* Collapsible */
 
 .collapsible {

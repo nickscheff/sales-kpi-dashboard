@@ -16,6 +16,7 @@ import {
   getGrossTotal,
   getMissingRevenue,
   getMonthlyRevenueMap,
+  getNextCommissionTierProgress,
   getPaceStatus,
   getQuarterSum,
   getRecordStatus,
@@ -51,6 +52,7 @@ function App() {
     const commissionTier = getCommissionTier(achievementPct)
     const commission = getCommission(actualRevenue, commissionTier.rate)
     const grossTotal = getGrossTotal(settings.baseSalary, commission)
+    const nextTierProgress = getNextCommissionTierProgress(actualRevenue, settings.monthlyTarget)
     const missingRevenue = getMissingRevenue(settings.monthlyTarget, actualRevenue)
     const record = getRecordStatus(monthlyRevenueMap, monthYear)
 
@@ -78,6 +80,7 @@ function App() {
       actualRevenue,
       commission,
       commissionTier,
+      nextTierProgress,
       grossTotal,
       achievementPct,
       missingRevenue,
@@ -211,6 +214,7 @@ function App() {
           commission={derived.commission}
           grossTotal={derived.grossTotal}
           commissionTier={derived.commissionTier}
+          nextTierProgress={derived.nextTierProgress}
           record={derived.record}
         />
 

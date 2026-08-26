@@ -1,7 +1,8 @@
+import { CommissionTierTracker } from './CommissionTierTracker'
 import { Card } from './ui/Card'
 import { ProgressBar } from './ui/ProgressBar'
 import { formatCurrency } from '../lib/format'
-import type { CommissionTier, RecordStatus } from '../lib/calculations'
+import type { CommissionTier, NextCommissionTierProgress, RecordStatus } from '../lib/calculations'
 
 interface Props {
   monthActual: number
@@ -15,6 +16,7 @@ interface Props {
   commission: number
   grossTotal: number
   commissionTier: CommissionTier
+  nextTierProgress: NextCommissionTierProgress
   record: RecordStatus
 }
 
@@ -30,12 +32,14 @@ export function ProgressOverview({
   commission,
   grossTotal,
   commissionTier,
+  nextTierProgress,
   record,
 }: Props) {
   return (
     <Card title="Umsatz-Fortschritt" className="span-2">
       <div className="progress-overview">
         <ProgressBar label="Monat" actual={monthActual} target={monthTarget} />
+        <CommissionTierTracker progress={nextTierProgress} />
         <ProgressBar label={`Quartal (${quarterLabel})`} actual={quarterActual} target={quarterTarget} />
         <ProgressBar label={`Jahr (${yearLabel})`} actual={yearActual} target={yearTarget} />
       </div>

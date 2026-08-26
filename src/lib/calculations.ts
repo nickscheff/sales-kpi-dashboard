@@ -44,6 +44,35 @@ export function getCommissionTier(achievementPct: number): CommissionTier {
   return applicable
 }
 
+export interface NextCommissionTierProgress {
+  /** `null`, wenn die höchste Stufe bereits erreicht ist. */
+  nextTier: CommissionTier | null
+  /** Fehlender Umsatz bis zur Schwelle der nächsten Stufe, 0 falls `nextTier` null ist. */
+  amountRemaining: number
+  /** Umsatz-Schwelle der nächsten Stufe (Monatsziel × Schwellen-Anteil), 0 falls `nextTier` null ist. */
+  requiredRevenue: number
+  /** Fortschritt Richtung nächster Schwelle, 0..1. 1, wenn bereits höchste Stufe erreicht. */
+  progressPct: number
+}
+
+/** Bezieht sich auf den tatsächlichen Ist-Umsatz/die Zielerreichung des Monats, nicht auf Stretch-Goal-Szenarien. */
+export function getNextCommissionTierProgress(monthActual: number, monthTarget: number): NextCommissionTierProgress {
+  const achievementPct = getAchievementPct(monthActual, monthTarget)
+  const currentTier = getCommissionTier(achievementPct)
+  const currentIndex = COMMISSION_TIERS.indexOf(currentTier)
+  const nextTier = COMMISSION_TIERS[currentIndex + 1] ?? null
+
+  if (!nextTier) {
+    return { nextTier: null, amountRemaining: 0, requiredRevenue: 0, progressPct: 1 }
+  }
+
+  const requiredRevenue = monthTarget * nextTier.threshold
+  const amountRemaining = Math.max(0, requiredRevenue - monthActual)
+  const progressPct = requiredRevenue > 0 ? Math.min(1, monthActual / requiredRevenue) : 0
+
+  return { nextTier, amountRemaining, requiredRevenue, progressPct }
+}
+
 export function getGrossTotal(baseSalary: number, commission: number): number {
   return baseSalary + commission
 }

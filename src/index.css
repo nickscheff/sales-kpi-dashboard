@@ -14,6 +14,13 @@
   --accent-border: rgba(34, 197, 94, 0.4);
   --shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.7);
 
+  /* Eigener "epischer" Akzent nur für den Provisionsstufen-Tracker, bewusst abgesetzt vom
+     normalen grünen --accent. #d4af37 auf --bg (#0a0f0c) liegt bei ~9:1 Kontrast. */
+  --gold: #d4af37;
+  --gold-strong: #b8860b;
+  --gold-soft: rgba(212, 175, 55, 0.15);
+  --gold-border: rgba(212, 175, 55, 0.45);
+
   --font-heading: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
