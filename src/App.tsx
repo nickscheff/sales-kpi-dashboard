@@ -6,6 +6,7 @@ import { MonthSwitcher } from './components/MonthSwitcher'
 import { PaceStatus } from './components/PaceStatus'
 import { PipelinePanel } from './components/PipelinePanel'
 import { ProgressOverview } from './components/ProgressOverview'
+import { QuarterYearHistorySetup } from './components/QuarterYearHistorySetup'
 import { StatusBadge } from './components/StatusBadge'
 import {
   getAchievementPct,
@@ -214,14 +215,17 @@ function App() {
         settings={derived.settings}
         onChangeMonthYear={updateMonthYear}
         onChangeSettings={updateSettings}
+        scenarios={derived.scenarios}
+        funnelItems={derived.funnelItems}
+      />
+
+      <QuarterYearHistorySetup
         quarterTarget={data.quarterTarget}
         yearTarget={data.yearTarget}
         onChangeQuarterTarget={updateQuarterTarget}
         onChangeYearTarget={updateYearTarget}
         history={data.history}
         onChangeHistory={updateHistory}
-        scenarios={derived.scenarios}
-        funnelItems={derived.funnelItems}
       />
     </div>
   )
