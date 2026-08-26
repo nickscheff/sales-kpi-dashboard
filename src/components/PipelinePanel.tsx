@@ -33,6 +33,13 @@ function defaultFollowUpDate(): string {
   return todayISODate(new Date(Date.now() + FOLLOW_UP_DEFAULT_OFFSET_DAYS * 24 * 60 * 60 * 1000))
 }
 
+/** Kurzform "TT.MM." für die mobile Übersichtszeile im Offen-Bereich - reine
+ * String-Operation auf dem ISO-Datum, kein Date-Objekt/Zeitzonen-Umweg nötig. */
+function formatShortDate(iso: string): string {
+  const [, month, day] = iso.split('-')
+  return `${day}.${month}.`
+}
+
 export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateDeal, onReachOutToLostLead }: Props) {
   const [dealRevenueDrafts, setDealRevenueDrafts] = useState<Record<string, number>>({})
   const [closingEntryIds, setClosingEntryIds] = useState<Set<string>>(new Set())
@@ -42,6 +49,11 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
   const [followUpDateDrafts, setFollowUpDateDrafts] = useState<Record<string, string>>({})
   const [reachingOutEntryIds, setReachingOutEntryIds] = useState<Set<string>>(new Set())
   const [reachOutDateDrafts, setReachOutDateDrafts] = useState<Record<string, string>>({})
+
+  // Akkordeon nur für die mobile Kartenansicht im Offen-Bereich (CSS-seitig auf Desktop/
+  // Tablet komplett wirkungslos, siehe .pipeline-row-summary in App.css). Einzelwert statt
+  // Set, damit "nur eine Karte gleichzeitig offen" automatisch gilt.
+  const [expandedOpenEntryId, setExpandedOpenEntryId] = useState<string | null>(null)
 
   const staleLostLeads = getStaleLostLeads(allMonthsPipeline, LOST_LEAD_STALE_MONTHS)
   // Zwei unabhängige Filter-States statt einem gemeinsamen: die obere Leiste filtert nur
@@ -90,6 +102,15 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
 
   const toggleOpenFilter = (label: PipelineLabel) => setOpenLabelFilter((prev) => (prev === label ? null : label))
   const resetOpenFilter = () => setOpenLabelFilter(null)
+
+  // Kein Zuklappen, solange die Karte mitten in einem Bestätigen/Abbrechen-Zwischenschritt
+  // steckt (Umsatz-/Datum-Eingabe) - sie bleibt zwangsweise aufgeklappt (siehe isExpanded in
+  // renderRow), ein Tap auf die Übersichtszeile wird dafür hier ignoriert. Raus kommt man nur
+  // über den bestehenden "Abbrechen"-Button.
+  const toggleOpenCard = (id: string, isMidConfirmation: boolean) => {
+    if (isMidConfirmation) return
+    setExpandedOpenEntryId((prev) => (prev === id ? null : id))
+  }
 
   const toggleClosedFilter = (label: PipelineLabel) => {
     const next = closedLabelFilter === label ? null : label
@@ -194,12 +215,46 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
     cancelReachOut(entry.id)
   }
 
-  const renderRow = (entry: PipelineEntry, section: Section) => (
-    <tr key={entry.id}>
-      <td data-label="Datum">
+  const renderRow = (entry: PipelineEntry, section: Section) => {
+    // Akkordeon gilt nur für den Offen-Bereich (No-Show/Cancel, Abgeschlossen, Lost-Lead-
+    // Reminder bleiben unverändert immer voll ausgeklappt, siehe .pipeline-row-summary
+    // Basisregel display:none in App.css - für section !== 'open' wird die Übersichtszeile
+    // unten gar nicht erst gerendert).
+    const isCollapsible = section === 'open'
+    const isMidConfirmation = closingEntryIds.has(entry.id) || planningFollowUpEntryIds.has(entry.id)
+    const isExpanded = !isCollapsible || expandedOpenEntryId === entry.id || isMidConfirmation
+    const detailClassName = isCollapsible ? 'pipeline-row-detail' : undefined
+
+    return (
+    <tr
+      key={entry.id}
+      className={isCollapsible ? 'pipeline-row-collapsible' : undefined}
+      data-expanded={isCollapsible ? String(isExpanded) : undefined}
+    >
+      {isCollapsible && (
+        <td className="pipeline-row-summary">
+          <button
+            type="button"
+            className="pipeline-row-summary-toggle"
+            onClick={() => toggleOpenCard(entry.id, isMidConfirmation)}
+            aria-expanded={isExpanded}
+          >
+            <span className="pipeline-row-summary-main">
+              <span className="pipeline-row-summary-company">{entry.company || '–'}</span>
+              <span className="pipeline-row-summary-meta">
+                {formatShortDate(entry.date)} · {entry.label}
+              </span>
+            </span>
+            <span className="pipeline-row-summary-chevron" aria-hidden="true">
+              {isExpanded ? '▾' : '▸'}
+            </span>
+          </button>
+        </td>
+      )}
+      <td data-label="Datum" className={detailClassName}>
         <input type="date" value={entry.date} onChange={(e) => updateEntry(entry.id, { date: e.target.value })} />
       </td>
-      <td data-label="Firma">
+      <td data-label="Firma" className={detailClassName}>
         <input
           type="text"
           value={entry.company ?? ''}
@@ -207,7 +262,7 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
           onChange={(e) => updateEntry(entry.id, { company: e.target.value })}
         />
       </td>
-      <td data-label="Label">
+      <td data-label="Label" className={detailClassName}>
         <select value={entry.label} onChange={(e) => updateEntry(entry.id, { label: e.target.value as PipelineLabel })}>
           {PIPELINE_LABELS.map((l) => (
             <option key={l} value={l}>
@@ -216,7 +271,7 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
           ))}
         </select>
       </td>
-      <td data-label="Aktion">
+      <td data-label="Aktion" className={detailClassName}>
         {section === 'open' &&
           (closingEntryIds.has(entry.id) ? (
             <div className="pipeline-deal-action">
@@ -306,13 +361,14 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
           </>
         )}
       </td>
-      <td>
+      <td className={detailClassName}>
         <PillButton variant="ghost" type="button" onClick={() => remove(entry.id)} aria-label="Eintrag entfernen">
           ✕
         </PillButton>
       </td>
     </tr>
-  )
+    )
+  }
 
   return (
     <Card title="Termin-Pipeline" subtitle="Gebuchte Termine nach Ausgang, dieser Monat" className="span-2">

@@ -292,6 +292,15 @@
   padding-top: 0;
 }
 
+/* Übersichtszeile für eingeklappte Offen-Karten (mobiles Akkordeon, siehe
+   .pipeline-row-collapsible weiter unten) - unconditional auf display:none, damit sie auf
+   Desktop/Tablet garantiert nie sichtbar wird und dort auch keine zusätzliche Tabellenspalte
+   erzeugt (display:none-Zellen zählen nicht bei der Spaltenberechnung). Erst der mobile
+   Breakpoint unten schaltet sie für eingeklappte Zeilen sichtbar. */
+.pipeline-row-summary {
+  display: none;
+}
+
 /* Mobile Kartenansicht für Tabellen (Termin-Pipeline: Offen/No-Show/Abgeschlossen/
    Lost-Lead-Reminder) - ab dieser Breite wird jede Zeile zu einer Karte mit
    gestapelten Label:Wert-Paaren statt fester Spalten. Reine Anzeige-Umstellung, keine
@@ -389,6 +398,57 @@
     align-items: center;
     min-height: 44px;
     padding: 10px 16px;
+  }
+
+  /* Akkordeon im Offen-Bereich: eingeklappte Karte zeigt nur die Übersichtszeile,
+     aufgeklappt die bisherigen Detail-Zellen (unverändert). Gilt nur für Zeilen mit
+     .pipeline-row-collapsible - No-Show/Cancel, Abgeschlossen und Lost-Lead-Reminder
+     rendern diese Klasse gar nicht und bleiben unverändert immer voll sichtbar. */
+  .pipeline-row-collapsible[data-expanded='false'] .pipeline-row-summary {
+    display: block;
+    padding: 2px 0;
+  }
+
+  .pipeline-row-summary-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: transparent;
+    border: none;
+    padding: 8px 2px;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .pipeline-row-summary-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .pipeline-row-summary-company {
+    font-weight: 600;
+    overflow-wrap: break-word;
+  }
+
+  .pipeline-row-summary-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .pipeline-row-summary-chevron {
+    color: var(--accent);
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .pipeline-row-collapsible[data-expanded='false'] .pipeline-row-detail {
+    display: none;
   }
 }
 
