@@ -196,10 +196,10 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
 
   const renderRow = (entry: PipelineEntry, section: Section) => (
     <tr key={entry.id}>
-      <td>
+      <td data-label="Datum">
         <input type="date" value={entry.date} onChange={(e) => updateEntry(entry.id, { date: e.target.value })} />
       </td>
-      <td>
+      <td data-label="Firma">
         <input
           type="text"
           value={entry.company ?? ''}
@@ -207,7 +207,7 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
           onChange={(e) => updateEntry(entry.id, { company: e.target.value })}
         />
       </td>
-      <td>
+      <td data-label="Label">
         <select value={entry.label} onChange={(e) => updateEntry(entry.id, { label: e.target.value as PipelineLabel })}>
           {PIPELINE_LABELS.map((l) => (
             <option key={l} value={l}>
@@ -216,7 +216,7 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
           ))}
         </select>
       </td>
-      <td>
+      <td data-label="Aktion">
         {section === 'open' &&
           (closingEntryIds.has(entry.id) ? (
             <div className="pipeline-deal-action">
@@ -331,9 +331,9 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
               <tbody>
                 {staleLostLeads.map((entry) => (
                   <tr key={entry.id}>
-                    <td>{entry.date}</td>
-                    <td>{entry.company || '–'}</td>
-                    <td>
+                    <td data-label="Datum">{entry.date}</td>
+                    <td data-label="Firma">{entry.company || '–'}</td>
+                    <td data-label="Aktion">
                       {reachingOutEntryIds.has(entry.id) ? (
                         <div className="pipeline-deal-action">
                           <span className="field-label">Neuer Termin am</span>

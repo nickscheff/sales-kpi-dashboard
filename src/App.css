@@ -292,6 +292,98 @@
   padding-top: 0;
 }
 
+/* Mobile Kartenansicht für Tabellen (Termin-Pipeline: Offen/No-Show/Abgeschlossen/
+   Lost-Lead-Reminder) - ab dieser Breite wird jede Zeile zu einer Karte mit
+   gestapelten Label:Wert-Paaren statt fester Spalten. Reine Anzeige-Umstellung, keine
+   Verhaltensänderung. Oberhalb dieser Breite (Desktop/Tablet) bleibt die normale
+   Tabellen-Darstellung unverändert - dieser Block gilt nur unterhalb von 640px. */
+@media (max-width: 640px) {
+  .table thead {
+    display: none;
+  }
+
+  .table,
+  .table tbody,
+  .table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .table tbody tr {
+    margin-bottom: 12px;
+    padding: 4px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-elevated);
+  }
+
+  .table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .table td {
+    display: block;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+    overflow-wrap: break-word;
+  }
+
+  .table td:first-child {
+    border-top: none;
+  }
+
+  .table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .table td input,
+  .table td select {
+    width: 100%;
+  }
+
+  /* Inputs innerhalb einer Aktions-Zeile (z.B. Umsatz/Datum neben Bestätigen/Abbrechen)
+     teilen sich die Kartenbreite flexibel statt starr auf 100% oder 100px (Desktop-Wert
+     aus .pipeline-deal-action input) begrenzt zu sein. */
+  .table td .pipeline-deal-action input {
+    width: auto;
+    max-width: none;
+    flex: 1 1 140px;
+  }
+
+  /* Datums-Gruppierung (Überfällig/Heute/Morgen/Diese Woche/Später) bleibt eine reine
+     Zwischenüberschrift, keine eigene Karte. */
+  .table tr.table-group-row {
+    margin-bottom: 4px;
+    padding: 0;
+    border: none;
+    background: none;
+  }
+
+  .table tr.table-group-row td.table-group-heading {
+    border-top: none;
+    padding: 16px 2px 6px;
+  }
+
+  .table tr.table-group-row:first-child td.table-group-heading {
+    padding-top: 0;
+  }
+
+  /* Größere Tippflächen für Filter-Chips auf dem Handy. */
+  .pipeline-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+}
+
 /* KPI overview */
 
 .kpi-grid {
