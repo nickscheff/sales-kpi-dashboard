@@ -554,6 +554,11 @@
   margin-bottom: 18px;
 }
 
+.pipeline-summary-closed {
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+
 .pipeline-deal-action {
   display: flex;
   align-items: center;

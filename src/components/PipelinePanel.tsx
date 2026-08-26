@@ -34,9 +34,15 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
   const [reactivateDateDrafts, setReactivateDateDrafts] = useState<Record<string, string>>({})
   const [planningFollowUpEntryIds, setPlanningFollowUpEntryIds] = useState<Set<string>>(new Set())
   const [followUpDateDrafts, setFollowUpDateDrafts] = useState<Record<string, string>>({})
-  const [activeLabelFilter, setActiveLabelFilter] = useState<PipelineLabel | null>(null)
+  // Zwei unabhängige Filter-States statt einem gemeinsamen: die obere Leiste filtert nur
+  // Offen, die eigene Mini-Leiste über "Abgeschlossen" nur diese Tabelle. No-Show/Cancel
+  // hat keinen Filter (die Tabelle enthält ohnehin immer nur dieses eine Label).
+  const [openLabelFilter, setOpenLabelFilter] = useState<PipelineLabel | null>(null)
+  const [closedLabelFilter, setClosedLabelFilter] = useState<PipelineLabel | null>(null)
 
   const summary = getPipelineSummary(pipeline)
+  const openSummary = summary.filter((item) => OPEN_PIPELINE_LABELS.includes(item.label))
+  const closedSummary = summary.filter((item) => CLOSED_PIPELINE_LABELS.includes(item.label))
 
   const openAll = pipeline.filter((entry) => OPEN_PIPELINE_LABELS.includes(entry.label)).sort((a, b) => a.date.localeCompare(b.date))
   const noShowAll = pipeline
@@ -44,15 +50,9 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
     .sort((a, b) => b.date.localeCompare(a.date))
   const closedAll = pipeline.filter((entry) => CLOSED_PIPELINE_LABELS.includes(entry.label)).sort((a, b) => b.date.localeCompare(a.date))
 
-  // Ein Chip filtert immer nur "seine" Tabelle - die anderen beiden bleiben unangetastet,
-  // da jedes Label eindeutig genau einer der drei Gruppen angehört.
-  const open = activeLabelFilter && OPEN_PIPELINE_LABELS.includes(activeLabelFilter) ? openAll.filter((e) => e.label === activeLabelFilter) : openAll
-  const noShow =
-    activeLabelFilter && REACTIVATABLE_PIPELINE_LABELS.includes(activeLabelFilter)
-      ? noShowAll.filter((e) => e.label === activeLabelFilter)
-      : noShowAll
-  const closed =
-    activeLabelFilter && CLOSED_PIPELINE_LABELS.includes(activeLabelFilter) ? closedAll.filter((e) => e.label === activeLabelFilter) : closedAll
+  const open = openLabelFilter ? openAll.filter((e) => e.label === openLabelFilter) : openAll
+  const noShow = noShowAll
+  const closed = closedLabelFilter ? closedAll.filter((e) => e.label === closedLabelFilter) : closedAll
 
   const hasPendingClosedDeal = closedAll.some((entry) => entry.label === 'Closed Deal' && !entry.dealCreated)
   const [abgeschlossenOpen, setAbgeschlossenOpen] = useState(hasPendingClosedDeal)
@@ -77,12 +77,15 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
   const add = () =>
     onChange([...pipeline, { id: newId(), date: todayISODate(), label: 'Discovery Call', company: '' }])
 
-  const toggleFilter = (label: PipelineLabel) => {
-    const next = activeLabelFilter === label ? null : label
-    setActiveLabelFilter(next)
-    if (next && CLOSED_PIPELINE_LABELS.includes(next)) setAbgeschlossenOpen(true)
+  const toggleOpenFilter = (label: PipelineLabel) => setOpenLabelFilter((prev) => (prev === label ? null : label))
+  const resetOpenFilter = () => setOpenLabelFilter(null)
+
+  const toggleClosedFilter = (label: PipelineLabel) => {
+    const next = closedLabelFilter === label ? null : label
+    setClosedLabelFilter(next)
+    if (next) setAbgeschlossenOpen(true)
   }
-  const resetFilter = () => setActiveLabelFilter(null)
+  const resetClosedFilter = () => setClosedLabelFilter(null)
 
   const setDraft = (id: string, value: number) => setDealRevenueDrafts((prev) => ({ ...prev, [id]: value }))
 
@@ -277,20 +280,19 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
       <div className="pipeline-summary">
         <button
           type="button"
-          className={`pipeline-chip${activeLabelFilter === null ? ' pipeline-chip-active' : ''}`}
-          onClick={resetFilter}
+          className={`pipeline-chip${openLabelFilter === null ? ' pipeline-chip-active' : ''}`}
+          onClick={resetOpenFilter}
         >
           Alle
         </button>
-        {summary.map((item) => (
+        {openSummary.map((item) => (
           <button
             type="button"
-            className={`pipeline-chip${activeLabelFilter === item.label ? ' pipeline-chip-active' : ''}`}
+            className={`pipeline-chip${openLabelFilter === item.label ? ' pipeline-chip-active' : ''}`}
             key={item.label}
-            onClick={() => toggleFilter(item.label)}
+            onClick={() => toggleOpenFilter(item.label)}
           >
-            {item.count} {item.label}
-            {item.isOpen ? ' offen' : ''}
+            {item.count} {item.label} offen
           </button>
         ))}
       </div>
@@ -345,6 +347,26 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="pipeline-summary pipeline-summary-closed">
+        <button
+          type="button"
+          className={`pipeline-chip${closedLabelFilter === null ? ' pipeline-chip-active' : ''}`}
+          onClick={resetClosedFilter}
+        >
+          Alle
+        </button>
+        {closedSummary.map((item) => (
+          <button
+            type="button"
+            className={`pipeline-chip${closedLabelFilter === item.label ? ' pipeline-chip-active' : ''}`}
+            key={item.label}
+            onClick={() => toggleClosedFilter(item.label)}
+          >
+            {item.count} {item.label}
+          </button>
+        ))}
       </div>
 
       <Collapsible
