@@ -23,6 +23,7 @@ import {
   isRealCurrentMonth,
   todayISODate,
 } from './lib/calculations'
+import { getSettingsForMonth } from './lib/defaultData'
 import { newId } from './lib/id'
 import { useDashboardData } from './state/useDashboardData'
 import type { DailyActivityEntry, Deal, HistoryEntry, PipelineEntry, Settings } from './types'
@@ -36,6 +37,7 @@ function App() {
     if (!data) return null
 
     const monthYear = data.selectedMonth.monthYear
+    const settings = getSettingsForMonth(data.settingsByMonth, monthYear)
     const monthDeals = data.deals.filter((deal) => isInMonth(deal.date, monthYear))
     const monthPipeline = data.pipeline.filter((entry) => isInMonth(entry.date, monthYear))
     const monthDailyActivity = data.dailyActivity.filter((entry) => isInMonth(entry.date, monthYear))
@@ -43,34 +45,31 @@ function App() {
     const monthlyRevenueMap = getMonthlyRevenueMap(data.deals, data.history)
     const actualRevenue = monthlyRevenueMap.get(monthYear) ?? 0
 
-    const achievementPct = getAchievementPct(actualRevenue, data.selectedMonth.settings.monthlyTarget)
+    const achievementPct = getAchievementPct(actualRevenue, settings.monthlyTarget)
     const commissionTier = getCommissionTier(achievementPct)
     const commission = getCommission(actualRevenue, commissionTier.rate)
-    const grossTotal = getGrossTotal(data.selectedMonth.settings.baseSalary, commission)
-    const missingRevenue = getMissingRevenue(data.selectedMonth.settings.monthlyTarget, actualRevenue)
+    const grossTotal = getGrossTotal(settings.baseSalary, commission)
+    const missingRevenue = getMissingRevenue(settings.monthlyTarget, actualRevenue)
     const record = getRecordStatus(monthlyRevenueMap, monthYear)
 
     const quarterSum = getQuarterSum(monthlyRevenueMap, data.quarterTarget.quarterLabel, data.quarterTarget.target)
     const yearSum = getYearSum(monthlyRevenueMap, data.yearTarget.year, data.yearTarget.target)
 
-    const scenarios = getStretchScenarios(
-      data.selectedMonth.settings.monthlyTarget,
-      actualRevenue,
-      data.selectedMonth.settings,
-    )
+    const scenarios = getStretchScenarios(settings.monthlyTarget, actualRevenue, settings)
     const funnelItems = scenarios.map((scenario) => ({
       scenario,
-      funnel: getFunnel(scenario.requiredRevenue, data.selectedMonth.settings),
+      funnel: getFunnel(scenario.requiredRevenue, settings),
     }))
 
     const paceScenario = scenarios.find((scenario) => scenario.level === paceLevel) ?? scenarios[0]
-    const paceFunnel = getFunnel(paceScenario.requiredRevenue, data.selectedMonth.settings)
-    const pace = getPaceStatus(paceFunnel, data.selectedMonth, monthPipeline, monthDailyActivity)
+    const paceFunnel = getFunnel(paceScenario.requiredRevenue, settings)
+    const pace = getPaceStatus(paceFunnel, monthYear, settings, monthPipeline, monthDailyActivity)
 
     const isViewingOtherMonth = !isRealCurrentMonth(monthYear)
 
     return {
       monthYear,
+      settings,
       monthDeals,
       monthPipeline,
       monthDailyActivity,
@@ -98,11 +97,16 @@ function App() {
     )
   }
 
+  // Schreibt Änderungen immer unter den Key des aktuell gewählten Monats – ererbte Werte
+  // vom Vormonat (siehe getSettingsForMonth) werden dadurch bei der ersten Änderung zu
+  // einem eigenen, ab dann unabhängigen Eintrag für diesen Monat.
   const updateSettings = (settings: Settings) =>
-    update((prev) => ({ ...prev, selectedMonth: { ...prev.selectedMonth, settings } }))
+    update((prev) => ({
+      ...prev,
+      settingsByMonth: { ...prev.settingsByMonth, [prev.selectedMonth.monthYear]: settings },
+    }))
 
-  const updateMonthYear = (monthYear: string) =>
-    update((prev) => ({ ...prev, selectedMonth: { ...prev.selectedMonth, monthYear } }))
+  const updateMonthYear = (monthYear: string) => update((prev) => ({ ...prev, selectedMonth: { monthYear } }))
 
   // Alle drei Listen sind durchgehend gespeichert; die Komponenten bekommen nur die auf
   // den gewählten Monat gefilterte Teilmenge und liefern diese bearbeitet zurück – hier
@@ -178,7 +182,7 @@ function App() {
       <main className="app-grid">
         <ProgressOverview
           monthActual={derived.actualRevenue}
-          monthTarget={data.selectedMonth.settings.monthlyTarget}
+          monthTarget={derived.settings.monthlyTarget}
           quarterLabel={data.quarterTarget.quarterLabel}
           quarterActual={derived.quarterSum.sum}
           quarterTarget={data.quarterTarget.target}
@@ -203,7 +207,8 @@ function App() {
       </main>
 
       <MonthSetup
-        selectedMonth={data.selectedMonth}
+        monthYear={derived.monthYear}
+        settings={derived.settings}
         onChangeMonthYear={updateMonthYear}
         onChangeSettings={updateSettings}
         quarterTarget={data.quarterTarget}

@@ -5,7 +5,7 @@ import { QuarterYearTargets } from './QuarterYearTargets'
 import { SettingsPanel } from './SettingsPanel'
 import { StretchGoals } from './StretchGoals'
 import type { Funnel, StretchScenario } from '../lib/calculations'
-import type { HistoryEntry, QuarterTarget, SelectedMonth, Settings, YearTarget } from '../types'
+import type { HistoryEntry, QuarterTarget, Settings, YearTarget } from '../types'
 
 interface FunnelItem {
   scenario: StretchScenario
@@ -13,7 +13,8 @@ interface FunnelItem {
 }
 
 interface Props {
-  selectedMonth: SelectedMonth
+  monthYear: string
+  settings: Settings
   onChangeMonthYear: (monthYear: string) => void
   onChangeSettings: (settings: Settings) => void
   quarterTarget: QuarterTarget
@@ -27,7 +28,8 @@ interface Props {
 }
 
 export function MonthSetup({
-  selectedMonth,
+  monthYear,
+  settings,
   onChangeMonthYear,
   onChangeSettings,
   quarterTarget,
@@ -46,7 +48,7 @@ export function MonthSetup({
       defaultOpen={false}
     >
       <div className="app-grid">
-        <SettingsPanel selectedMonth={selectedMonth} onChangeMonthYear={onChangeMonthYear} onChangeSettings={onChangeSettings} />
+        <SettingsPanel monthYear={monthYear} settings={settings} onChangeMonthYear={onChangeMonthYear} onChangeSettings={onChangeSettings} />
         <QuarterYearTargets
           quarterTarget={quarterTarget}
           yearTarget={yearTarget}

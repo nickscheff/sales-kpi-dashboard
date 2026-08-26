@@ -1,4 +1,4 @@
-import type { DailyActivityEntry, Deal, HistoryEntry, PipelineEntry, PipelineLabel, SelectedMonth, Settings } from '../types'
+import type { DailyActivityEntry, Deal, HistoryEntry, PipelineEntry, PipelineLabel, Settings } from '../types'
 
 /** Prüft, ob ein "YYYY-MM-DD"-Datum in den gegebenen "YYYY-MM"-Monat fällt. */
 export function isInMonth(date: string, monthYear: string): boolean {
@@ -318,19 +318,21 @@ export interface PaceStatus {
 }
 
 /**
- * `monthPipeline` und `monthDailyActivity` müssen bereits auf `selectedMonth.monthYear`
- * gefiltert sein (siehe `isInMonth`).
+ * `monthPipeline` und `monthDailyActivity` müssen bereits auf `monthYear` gefiltert sein
+ * (siehe `isInMonth`). `settings` sind die für `monthYear` aufgelösten Settings (siehe
+ * `getSettingsForMonth` in lib/defaultData.ts).
  */
 export function getPaceStatus(
   funnel: Funnel,
-  selectedMonth: SelectedMonth,
+  monthYear: string,
+  settings: Settings,
   monthPipeline: PipelineEntry[],
   monthDailyActivity: DailyActivityEntry[],
   today: Date = new Date(),
 ): PaceStatus {
-  const isCurrentMonth = isRealCurrentMonth(selectedMonth.monthYear, today)
-  const elapsedWorkDays = getElapsedWorkDays(selectedMonth.monthYear, selectedMonth.settings.workDays, today)
-  const ratio = selectedMonth.settings.workDays > 0 ? elapsedWorkDays / selectedMonth.settings.workDays : 0
+  const isCurrentMonth = isRealCurrentMonth(monthYear, today)
+  const elapsedWorkDays = getElapsedWorkDays(monthYear, settings.workDays, today)
+  const ratio = settings.workDays > 0 ? elapsedWorkDays / settings.workDays : 0
 
   const requiredDecisionCalls = funnel.decisionCalls.perMonth * ratio
   const requiredHeldMeetings = funnel.heldMeetings.perMonth * ratio
@@ -340,7 +342,7 @@ export function getPaceStatus(
   return {
     isCurrentMonth,
     elapsedWorkDays,
-    totalWorkDays: selectedMonth.settings.workDays,
+    totalWorkDays: settings.workDays,
     decisionCalls: {
       required: requiredDecisionCalls,
       actual: actualDecisionCalls,

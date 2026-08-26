@@ -12,20 +12,21 @@ function currentQuarterLabel(): string {
   return `${now.getFullYear()}-Q${quarter}`
 }
 
+export const DEFAULT_SETTINGS: Settings = {
+  monthlyTarget: 50000,
+  baseSalary: 3000,
+  ticketSize: 2500,
+  closingRate: 30,
+  noShowRate: 15,
+  bookingRate: 20,
+  workDays: 21,
+}
+
 export function createDefaultData(): DashboardData {
+  const monthYear = currentMonthYear()
   return {
-    selectedMonth: {
-      monthYear: currentMonthYear(),
-      settings: {
-        monthlyTarget: 50000,
-        baseSalary: 3000,
-        ticketSize: 2500,
-        closingRate: 30,
-        noShowRate: 15,
-        bookingRate: 20,
-        workDays: 21,
-      },
-    },
+    selectedMonth: { monthYear },
+    settingsByMonth: { [monthYear]: DEFAULT_SETTINGS },
     deals: [],
     pipeline: [],
     dailyActivity: [],
@@ -36,18 +37,36 @@ export function createDefaultData(): DashboardData {
 }
 
 /**
- * Normalisiert aus der KV geladene Daten in die aktuelle Struktur. Erkennt am Feld
- * `currentMonth`, ob es sich um das alte Block-Format handelt (Deals/Pipeline/Tages-Zähler
- * fest einem einzigen Monat zugeordnet, vor der Umstellung auf durchgehende, datierte
- * Listen) und überführt es verlustfrei:
- * - Deals ohne `date` (im alten Format gab es noch kein Datumsfeld) bekommen den 1. des
- *   damaligen `currentMonth.monthYear` zugewiesen.
- * - Pipeline-Einträge hatten bereits ein Datum, wandern unverändert in die durchgehende Liste.
- * - Der alte additive Zähler `decisionCallsMade` (einzelne Zahl) wird – falls > 0 – zu einem
- *   einzelnen `DailyActivityEntry` am 1. des damaligen Monats.
- * Bereits im neuen Format gespeicherte Daten werden nur defensiv gegen fehlende Felder
- * abgesichert (falls z.B. ein Teilschreibvorgang unterbrochen wurde). Läuft bei jedem Laden
- * erneut (idempotent) – Persistenz erfolgt wie gehabt erst beim nächsten Speichern.
+ * Settings für `monthYear`: exakter Treffer falls vorhanden, sonst die Werte des
+ * chronologisch nächstgelegenen VORHERIGEN Monats (String-Vergleich funktioniert für
+ * "YYYY-MM" korrekt chronologisch). Ohne jeden Vormonat: App-Defaults. Rein lesend – die
+ * zurückgegebenen Werte sind editierbar, aber erst eine tatsächliche Änderung legt über
+ * `updateSettings` in App.tsx einen eigenen Eintrag für `monthYear` an.
+ */
+export function getSettingsForMonth(settingsByMonth: Record<string, Settings>, monthYear: string): Settings {
+  if (settingsByMonth[monthYear]) return settingsByMonth[monthYear]
+  const previousKeys = Object.keys(settingsByMonth)
+    .filter((key) => key < monthYear)
+    .sort()
+  const closest = previousKeys[previousKeys.length - 1]
+  return closest ? settingsByMonth[closest] : DEFAULT_SETTINGS
+}
+
+/**
+ * Normalisiert aus der KV geladene Daten in die aktuelle Struktur. Erkennt anhand der
+ * vorhandenen Felder eine von drei möglichen Formen und migriert verlustfrei:
+ * 1. Ältestes Block-Format (`currentMonth`, vor der Umstellung auf durchgehende, datierte
+ *    Listen): Deals ohne `date` bekommen den 1. des damaligen `currentMonth.monthYear`,
+ *    Pipeline-Einträge wandern unverändert in die durchgehende Liste, der alte additive
+ *    Zähler `decisionCallsMade` (falls > 0) wird zu einem einzelnen `DailyActivityEntry`
+ *    am 1. des damaligen Monats, die Settings landen in `settingsByMonth[monthYear]`.
+ * 2. Vorherige Zwischenform (`selectedMonth.settings` direkt am Filter-Objekt, vor der
+ *    Umstellung auf Settings pro Monat): `settings` wird einmalig nach
+ *    `settingsByMonth[selectedMonth.monthYear]` verschoben.
+ * 3. Bereits aktuelles Format (`settingsByMonth` vorhanden): defensiv gegen fehlende
+ *    Felder abgesichert.
+ * Läuft bei jedem Laden erneut (idempotent) – Persistenz erfolgt wie gehabt erst beim
+ * nächsten Speichern.
  */
 export function normalizeDashboardData(loaded: unknown): DashboardData {
   if (!loaded || typeof loaded !== 'object') return createDefaultData()
@@ -81,10 +100,8 @@ export function normalizeDashboardData(loaded: unknown): DashboardData {
         : []
 
     return {
-      selectedMonth: {
-        monthYear,
-        settings: { ...base.selectedMonth.settings, ...cm.settings },
-      },
+      selectedMonth: { monthYear },
+      settingsByMonth: { [monthYear]: { ...DEFAULT_SETTINGS, ...cm.settings } },
       deals,
       pipeline,
       dailyActivity,
@@ -94,12 +111,19 @@ export function normalizeDashboardData(loaded: unknown): DashboardData {
     }
   }
 
-  // Bereits neues Format – defensiv gegen fehlende Felder absichern.
-  const selectedMonth = raw.selectedMonth as DashboardData['selectedMonth'] | undefined
+  const selectedMonthRaw = raw.selectedMonth as { monthYear?: string; settings?: Partial<Settings> } | undefined
+  const monthYear = selectedMonthRaw?.monthYear ?? base.selectedMonth.monthYear
+
+  const existingSettingsByMonth = raw.settingsByMonth as Record<string, Settings> | undefined
+  const settingsByMonth: Record<string, Settings> = existingSettingsByMonth
+    ? existingSettingsByMonth
+    : selectedMonthRaw?.settings
+      ? { [monthYear]: { ...DEFAULT_SETTINGS, ...selectedMonthRaw.settings } }
+      : { [monthYear]: DEFAULT_SETTINGS }
+
   return {
-    selectedMonth: selectedMonth
-      ? { monthYear: selectedMonth.monthYear, settings: { ...base.selectedMonth.settings, ...selectedMonth.settings } }
-      : base.selectedMonth,
+    selectedMonth: { monthYear },
+    settingsByMonth,
     deals: (raw.deals as DashboardData['deals']) ?? [],
     pipeline: (raw.pipeline as DashboardData['pipeline']) ?? [],
     dailyActivity: (raw.dailyActivity as DashboardData['dailyActivity']) ?? [],

@@ -63,15 +63,19 @@ export interface DailyActivityEntry {
   count: number
 }
 
-/** Nur noch Filter/Konfiguration für den gerade betrachteten Monat, kein Datenblock mehr. */
+/** Reiner Filter, welcher Monat gerade betrachtet wird – kein Datenblock. */
 export interface SelectedMonth {
   /** Format "YYYY-MM" */
   monthYear: string
-  settings: Settings
 }
 
 export interface DashboardData {
   selectedMonth: SelectedMonth
+  /** Settings pro Monat (Key = "YYYY-MM"). Fehlt ein Monat, gelten die Werte des
+   * chronologisch nächstgelegenen Vormonats als editierbarer Startwert (siehe
+   * `getSettingsForMonth` in lib/defaultData.ts) – erst eine Änderung legt einen eigenen,
+   * ab dann unabhängigen Eintrag für diesen Monat an. */
+  settingsByMonth: Record<string, Settings>
   /** Durchgehend über alle Monate, nach `date` gefiltert für die jeweilige Monats-Ansicht. */
   deals: Deal[]
   pipeline: PipelineEntry[]
