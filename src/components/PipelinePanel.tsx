@@ -21,11 +21,19 @@ interface Props {
 
 type Section = 'open' | 'noShow' | 'closed'
 
+const FOLLOW_UP_DEFAULT_OFFSET_DAYS = 7
+
+function defaultFollowUpDate(): string {
+  return todayISODate(new Date(Date.now() + FOLLOW_UP_DEFAULT_OFFSET_DAYS * 24 * 60 * 60 * 1000))
+}
+
 export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
   const [dealRevenueDrafts, setDealRevenueDrafts] = useState<Record<string, number>>({})
   const [closingEntryIds, setClosingEntryIds] = useState<Set<string>>(new Set())
   const [reactivatingEntryIds, setReactivatingEntryIds] = useState<Set<string>>(new Set())
   const [reactivateDateDrafts, setReactivateDateDrafts] = useState<Record<string, string>>({})
+  const [planningFollowUpEntryIds, setPlanningFollowUpEntryIds] = useState<Set<string>>(new Set())
+  const [followUpDateDrafts, setFollowUpDateDrafts] = useState<Record<string, string>>({})
   const [activeLabelFilter, setActiveLabelFilter] = useState<PipelineLabel | null>(null)
 
   const summary = getPipelineSummary(pipeline)
@@ -120,6 +128,30 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
     cancelReactivate(entry.id)
   }
 
+  const startPlanFollowUp = (id: string) => {
+    setPlanningFollowUpEntryIds((prev) => new Set(prev).add(id))
+    setFollowUpDateDrafts((prev) => ({ ...prev, [id]: defaultFollowUpDate() }))
+  }
+  const cancelPlanFollowUp = (id: string) => {
+    setPlanningFollowUpEntryIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    setFollowUpDateDrafts((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+  const confirmPlanFollowUp = (entry: PipelineEntry) => {
+    const date = followUpDateDrafts[entry.id] ?? defaultFollowUpDate()
+    // Ursprungseintrag bleibt unverändert (repräsentiert weiterhin den bereits
+    // stattgefundenen Termin) - neuer, unabhängiger Eintrag für den Folgetermin.
+    onChange([...pipeline, { id: newId(), date, label: 'Follow-Up Call', company: entry.company }])
+    cancelPlanFollowUp(entry.id)
+  }
+
   const renderRow = (entry: PipelineEntry, section: Section) => (
     <tr key={entry.id}>
       <td>
@@ -161,10 +193,30 @@ export function PipelinePanel({ pipeline, onChange, onCreateDeal }: Props) {
                 Abbrechen
               </PillButton>
             </div>
+          ) : planningFollowUpEntryIds.has(entry.id) ? (
+            <div className="pipeline-deal-action">
+              <span className="field-label">Folgetermin am</span>
+              <input
+                type="date"
+                value={followUpDateDrafts[entry.id] ?? defaultFollowUpDate()}
+                onChange={(e) => setFollowUpDateDrafts((prev) => ({ ...prev, [entry.id]: e.target.value }))}
+              />
+              <PillButton type="button" onClick={() => confirmPlanFollowUp(entry)}>
+                Bestätigen
+              </PillButton>
+              <PillButton variant="ghost" type="button" onClick={() => cancelPlanFollowUp(entry.id)}>
+                Abbrechen
+              </PillButton>
+            </div>
           ) : (
-            <PillButton type="button" onClick={() => startClosing(entry.id)}>
-              ✓ Deal abschließen
-            </PillButton>
+            <div className="pipeline-deal-action">
+              <PillButton type="button" onClick={() => startClosing(entry.id)}>
+                ✓ Deal abschließen
+              </PillButton>
+              <PillButton type="button" onClick={() => startPlanFollowUp(entry.id)}>
+                → Folgetermin planen
+              </PillButton>
+            </div>
           ))}
         {section === 'noShow' &&
           (reactivatingEntryIds.has(entry.id) ? (
