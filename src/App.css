@@ -348,6 +348,14 @@
     width: 100%;
   }
 
+  /* iOS-Safari-Eigenheit: das native Datumsfeld ignoriert width:100% teilweise und ragt
+     sonst über den Kartenrand hinaus - min-width:0 erlaubt dem Feld, unter seine sonst
+     erzwungene Eigenbreite zu schrumpfen, max-width:100% deckelt es hart auf die Karte. */
+  .table td input[type='date'] {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   /* Inputs innerhalb einer Aktions-Zeile (z.B. Umsatz/Datum neben Bestätigen/Abbrechen)
      teilen sich die Kartenbreite flexibel statt starr auf 100% oder 100px (Desktop-Wert
      aus .pipeline-deal-action input) begrenzt zu sein. */
