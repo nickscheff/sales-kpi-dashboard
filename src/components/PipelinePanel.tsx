@@ -252,7 +252,9 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
         </td>
       )}
       <td data-label="Datum" className={detailClassName}>
-        <input type="date" value={entry.date} onChange={(e) => updateEntry(entry.id, { date: e.target.value })} />
+        <div className="pipeline-date-field">
+          <input type="date" value={entry.date} onChange={(e) => updateEntry(entry.id, { date: e.target.value })} />
+        </div>
       </td>
       <td data-label="Firma" className={detailClassName}>
         <input
