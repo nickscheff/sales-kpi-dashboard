@@ -278,6 +278,20 @@
   padding: 14px 10px;
 }
 
+.table-group-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 12px 10px 4px;
+  border-top: none;
+}
+
+.table-group-row:first-child .table-group-heading {
+  padding-top: 0;
+}
+
 /* KPI overview */
 
 .kpi-grid {

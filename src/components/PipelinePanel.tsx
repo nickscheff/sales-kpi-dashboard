@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Card } from './ui/Card'
 import { Collapsible } from './ui/Collapsible'
 import { PillButton } from './ui/PillButton'
@@ -10,6 +10,7 @@ import {
   REACTIVATABLE_PIPELINE_LABELS,
   getPipelineSummary,
   getStaleLostLeads,
+  groupOpenPipelineByDate,
   todayISODate,
 } from '../lib/calculations'
 import { newId } from '../lib/id'
@@ -59,6 +60,7 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
   const closedAll = pipeline.filter((entry) => CLOSED_PIPELINE_LABELS.includes(entry.label)).sort((a, b) => b.date.localeCompare(a.date))
 
   const open = openLabelFilter ? openAll.filter((e) => e.label === openLabelFilter) : openAll
+  const openGroups = groupOpenPipelineByDate(open)
   const noShow = noShowAll
   const closed = closedLabelFilter ? closedAll.filter((e) => e.label === closedLabelFilter) : closedAll
 
@@ -390,7 +392,16 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
             </tr>
           </thead>
           <tbody>
-            {open.map((entry) => renderRow(entry, 'open'))}
+            {openGroups.map((bucket) => (
+              <Fragment key={bucket.group}>
+                <tr className="table-group-row">
+                  <td colSpan={5} className="table-group-heading">
+                    {bucket.label}
+                  </td>
+                </tr>
+                {bucket.entries.map((entry) => renderRow(entry, 'open'))}
+              </Fragment>
+            ))}
             {open.length === 0 && (
               <tr>
                 <td colSpan={5} className="table-empty">

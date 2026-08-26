@@ -299,6 +299,65 @@ export function getStaleLostLeads(pipeline: PipelineEntry[], months: number, tod
     .sort((a, b) => a.date.localeCompare(b.date))
 }
 
+export type OpenPipelineDateGroup = 'overdue' | 'today' | 'tomorrow' | 'thisWeek' | 'later'
+
+const OPEN_PIPELINE_DATE_GROUP_LABELS: Record<OpenPipelineDateGroup, string> = {
+  overdue: 'Überfällig',
+  today: 'Heute',
+  tomorrow: 'Morgen',
+  thisWeek: 'Diese Woche',
+  later: 'Später',
+}
+
+const OPEN_PIPELINE_DATE_GROUP_ORDER: OpenPipelineDateGroup[] = ['overdue', 'today', 'tomorrow', 'thisWeek', 'later']
+
+function addDaysISODate(days: number, today: Date): string {
+  return todayISODate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + days))
+}
+
+/** Ende der aktuellen Kalenderwoche (Sonntag), als "YYYY-MM-DD". */
+function endOfWeekISODate(today: Date): string {
+  const dayOfWeek = today.getDay() // 0=So, 1=Mo, ..., 6=Sa
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek
+  return addDaysISODate(daysUntilSunday, today)
+}
+
+export function getOpenPipelineDateGroup(date: string, today: Date = new Date()): OpenPipelineDateGroup {
+  const todayISO = todayISODate(today)
+  if (date < todayISO) return 'overdue'
+  if (date === todayISO) return 'today'
+  if (date === addDaysISODate(1, today)) return 'tomorrow'
+  if (date <= endOfWeekISODate(today)) return 'thisWeek'
+  return 'later'
+}
+
+export interface OpenPipelineDateGroupBucket {
+  group: OpenPipelineDateGroup
+  label: string
+  entries: PipelineEntry[]
+}
+
+/**
+ * Gruppiert bereits (ggf. per Chip) gefilterte Offen-Einträge nach Datum in der
+ * Reihenfolge Überfällig → Heute → Morgen → Diese Woche → Später. Leere Gruppen werden
+ * nicht zurückgegeben. Erwartet innerhalb jeder Gruppe keine bestimmte Vorsortierung -
+ * `entries` behält die Reihenfolge der Eingabe bei.
+ */
+export function groupOpenPipelineByDate(entries: PipelineEntry[], today: Date = new Date()): OpenPipelineDateGroupBucket[] {
+  const buckets = new Map<OpenPipelineDateGroup, PipelineEntry[]>()
+  for (const entry of entries) {
+    const group = getOpenPipelineDateGroup(entry.date, today)
+    const bucket = buckets.get(group)
+    if (bucket) bucket.push(entry)
+    else buckets.set(group, [entry])
+  }
+  return OPEN_PIPELINE_DATE_GROUP_ORDER.filter((group) => buckets.has(group)).map((group) => ({
+    group,
+    label: OPEN_PIPELINE_DATE_GROUP_LABELS[group],
+    entries: buckets.get(group) as PipelineEntry[],
+  }))
+}
+
 function countWeekdaysUpTo(year: number, month: number, throughDay: number): number {
   let count = 0
   for (let day = 1; day <= throughDay; day++) {
