@@ -35,3 +35,17 @@ export function formatMonthYearLabel(monthYear: string): string {
   const [year, month] = monthYear.split('-').map(Number)
   return monthYearFormatter.format(new Date(year, month - 1, 1))
 }
+
+/** Kurzform "TT.MM." für kompakte mobile Übersichtszeilen - reine String-Operation auf
+ * dem ISO-Datum, kein Date-Objekt/Zeitzonen-Umweg nötig. */
+export function formatShortDate(iso: string): string {
+  const [, month, day] = iso.split('-')
+  return `${day}.${month}.`
+}
+
+/** Vollform "TT.MM.JJJJ" für die Datum-Anzeige im Bestätigen-Schritt - ebenfalls reine
+ * String-Operation, kein Date-Objekt/Zeitzonen-Umweg nötig. */
+export function formatFullDate(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  return `${day}.${month}.${year}`
+}

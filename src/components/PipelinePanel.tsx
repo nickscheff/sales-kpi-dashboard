@@ -13,6 +13,7 @@ import {
   groupOpenPipelineByDate,
   todayISODate,
 } from '../lib/calculations'
+import { formatFullDate, formatShortDate } from '../lib/format'
 import { newId } from '../lib/id'
 import type { PipelineEntry, PipelineLabel } from '../types'
 
@@ -33,13 +34,6 @@ function defaultFollowUpDate(): string {
   return todayISODate(new Date(Date.now() + FOLLOW_UP_DEFAULT_OFFSET_DAYS * 24 * 60 * 60 * 1000))
 }
 
-/** Kurzform "TT.MM." für die mobile Übersichtszeile im Offen-Bereich - reine
- * String-Operation auf dem ISO-Datum, kein Date-Objekt/Zeitzonen-Umweg nötig. */
-function formatShortDate(iso: string): string {
-  const [, month, day] = iso.split('-')
-  return `${day}.${month}.`
-}
-
 export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateDeal, onReachOutToLostLead }: Props) {
   const [dealRevenueDrafts, setDealRevenueDrafts] = useState<Record<string, number>>({})
   const [closingEntryIds, setClosingEntryIds] = useState<Set<string>>(new Set())
@@ -50,10 +44,21 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
   const [reachingOutEntryIds, setReachingOutEntryIds] = useState<Set<string>>(new Set())
   const [reachOutDateDrafts, setReachOutDateDrafts] = useState<Record<string, string>>({})
 
-  // Akkordeon nur für die mobile Kartenansicht im Offen-Bereich (CSS-seitig auf Desktop/
-  // Tablet komplett wirkungslos, siehe .pipeline-row-summary in App.css). Einzelwert statt
-  // Set, damit "nur eine Karte gleichzeitig offen" automatisch gilt.
+  // Datum eines bestehenden Eintrags wird erst nach Bestätigen übernommen (analog zu
+  // Reaktivieren/Folgetermin/Erneut kontaktieren) - verhindert, dass beim Navigieren im
+  // nativen Kalender auf dem Handy versehentlich schon ein Datum übernommen wird, bevor
+  // bewusst ein Tag ausgewählt wurde. Gilt für alle drei Tabellen, auf allen Bildschirmgrößen.
+  const [editingDateEntryIds, setEditingDateEntryIds] = useState<Set<string>>(new Set())
+  const [dateDrafts, setDateDrafts] = useState<Record<string, string>>({})
+
+  // Akkordeon für die mobile Kartenansicht (CSS-seitig auf Desktop/Tablet komplett
+  // wirkungslos, siehe .pipeline-row-summary in App.css). Einzelwert statt Set, damit "nur
+  // eine Karte gleichzeitig offen" automatisch gilt - ein eigener State pro Bereich, damit
+  // die drei Bereiche unabhängig voneinander jeweils eine eigene aufgeklappte Karte haben
+  // können.
   const [expandedOpenEntryId, setExpandedOpenEntryId] = useState<string | null>(null)
+  const [expandedNoShowEntryId, setExpandedNoShowEntryId] = useState<string | null>(null)
+  const [expandedClosedEntryId, setExpandedClosedEntryId] = useState<string | null>(null)
 
   const staleLostLeads = getStaleLostLeads(allMonthsPipeline, LOST_LEAD_STALE_MONTHS)
   // Zwei unabhängige Filter-States statt einem gemeinsamen: die obere Leiste filtert nur
@@ -106,10 +111,11 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
   // Kein Zuklappen, solange die Karte mitten in einem Bestätigen/Abbrechen-Zwischenschritt
   // steckt (Umsatz-/Datum-Eingabe) - sie bleibt zwangsweise aufgeklappt (siehe isExpanded in
   // renderRow), ein Tap auf die Übersichtszeile wird dafür hier ignoriert. Raus kommt man nur
-  // über den bestehenden "Abbrechen"-Button.
-  const toggleOpenCard = (id: string, isMidConfirmation: boolean) => {
+  // über den bestehenden "Abbrechen"-Button. Eigener Akkordeon-State pro Bereich (siehe oben).
+  const toggleCard = (section: Section, id: string, isMidConfirmation: boolean) => {
     if (isMidConfirmation) return
-    setExpandedOpenEntryId((prev) => (prev === id ? null : id))
+    const setExpanded = section === 'open' ? setExpandedOpenEntryId : section === 'noShow' ? setExpandedNoShowEntryId : setExpandedClosedEntryId
+    setExpanded((prev) => (prev === id ? null : id))
   }
 
   const toggleClosedFilter = (label: PipelineLabel) => {
@@ -215,46 +221,88 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
     cancelReachOut(entry.id)
   }
 
+  const startEditDate = (entry: PipelineEntry) => {
+    setEditingDateEntryIds((prev) => new Set(prev).add(entry.id))
+    setDateDrafts((prev) => ({ ...prev, [entry.id]: entry.date }))
+  }
+  const cancelEditDate = (id: string) => {
+    setEditingDateEntryIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    setDateDrafts((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+  const confirmEditDate = (entry: PipelineEntry) => {
+    const date = dateDrafts[entry.id] ?? entry.date
+    updateEntry(entry.id, { date })
+    cancelEditDate(entry.id)
+  }
+
   const renderRow = (entry: PipelineEntry, section: Section) => {
-    // Akkordeon gilt nur für den Offen-Bereich (No-Show/Cancel, Abgeschlossen, Lost-Lead-
-    // Reminder bleiben unverändert immer voll ausgeklappt, siehe .pipeline-row-summary
-    // Basisregel display:none in App.css - für section !== 'open' wird die Übersichtszeile
-    // unten gar nicht erst gerendert).
-    const isCollapsible = section === 'open'
-    const isMidConfirmation = closingEntryIds.has(entry.id) || planningFollowUpEntryIds.has(entry.id)
-    const isExpanded = !isCollapsible || expandedOpenEntryId === entry.id || isMidConfirmation
-    const detailClassName = isCollapsible ? 'pipeline-row-detail' : undefined
+    // Akkordeon gilt einheitlich für alle drei Bereiche (Lost-Lead-Reminder nutzt renderRow
+    // nicht und bleibt unverändert immer voll ausgeklappt), jeweils mit eigenem Akkordeon-
+    // State pro Bereich (siehe expandedOpenEntryId/expandedNoShowEntryId/expandedClosedEntryId
+    // oben) - "nur eine Karte offen" gilt dadurch unabhängig je Bereich.
+    const expandedEntryId = section === 'open' ? expandedOpenEntryId : section === 'noShow' ? expandedNoShowEntryId : expandedClosedEntryId
+    const isMidConfirmation =
+      closingEntryIds.has(entry.id) ||
+      planningFollowUpEntryIds.has(entry.id) ||
+      reactivatingEntryIds.has(entry.id) ||
+      editingDateEntryIds.has(entry.id)
+    const isExpanded = expandedEntryId === entry.id || isMidConfirmation
+    const detailClassName = 'pipeline-row-detail'
 
     return (
     <tr
       key={entry.id}
-      className={isCollapsible ? 'pipeline-row-collapsible' : undefined}
-      data-expanded={isCollapsible ? String(isExpanded) : undefined}
+      className="pipeline-row-collapsible"
+      data-expanded={String(isExpanded)}
     >
-      {isCollapsible && (
-        <td className="pipeline-row-summary">
-          <button
-            type="button"
-            className="pipeline-row-summary-toggle"
-            onClick={() => toggleOpenCard(entry.id, isMidConfirmation)}
-            aria-expanded={isExpanded}
-          >
-            <span className="pipeline-row-summary-main">
-              <span className="pipeline-row-summary-company">{entry.company || '–'}</span>
-              <span className="pipeline-row-summary-meta">
-                {formatShortDate(entry.date)} · {entry.label}
-              </span>
+      <td className="pipeline-row-summary">
+        <button
+          type="button"
+          className="pipeline-row-summary-toggle"
+          onClick={() => toggleCard(section, entry.id, isMidConfirmation)}
+          aria-expanded={isExpanded}
+        >
+          <span className="pipeline-row-summary-main">
+            <span className="pipeline-row-summary-company">{entry.company || '–'}</span>
+            <span className="pipeline-row-summary-meta">
+              {formatShortDate(entry.date)} · {entry.label}
             </span>
-            <span className="pipeline-row-summary-chevron" aria-hidden="true">
-              {isExpanded ? '▾' : '▸'}
-            </span>
-          </button>
-        </td>
-      )}
+          </span>
+          <span className="pipeline-row-summary-chevron" aria-hidden="true">
+            {isExpanded ? '▾' : '▸'}
+          </span>
+        </button>
+      </td>
       <td data-label="Datum" className={detailClassName}>
-        <div className="pipeline-date-field">
-          <input type="date" value={entry.date} onChange={(e) => updateEntry(entry.id, { date: e.target.value })} />
-        </div>
+        {editingDateEntryIds.has(entry.id) ? (
+          <div className="pipeline-deal-action">
+            <div className="pipeline-date-field">
+              <input
+                type="date"
+                value={dateDrafts[entry.id] ?? entry.date}
+                onChange={(e) => setDateDrafts((prev) => ({ ...prev, [entry.id]: e.target.value }))}
+              />
+            </div>
+            <PillButton type="button" onClick={() => confirmEditDate(entry)}>
+              Bestätigen
+            </PillButton>
+            <PillButton variant="ghost" type="button" onClick={() => cancelEditDate(entry.id)}>
+              Abbrechen
+            </PillButton>
+          </div>
+        ) : (
+          <PillButton type="button" onClick={() => startEditDate(entry)}>
+            {formatFullDate(entry.date)} ✎
+          </PillButton>
+        )}
       </td>
       <td data-label="Firma" className={detailClassName}>
         <input
