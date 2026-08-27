@@ -54,8 +54,11 @@ export interface PipelineEntry {
   company?: string
   /** Wurde aus diesem Eintrag bereits einmalig ein Deal übernommen? Kein Verweis, nur Flag. */
   dealCreated?: boolean
-  /** Wurde dieser (alte) Lost-Lead bereits einmalig erneut kontaktiert? Kein Verweis, nur Flag. */
-  reachedOutAgain?: boolean
+  /** Wurde dieser (alte) Lost-Lead im Lost-Lead-Reminder bereits behandelt - entweder per
+   * "→ Neuer Termin" (neuer Discovery Call wurde angelegt) oder "Weiterhin Lost" (bewusst
+   * kein neuer Termin)? In beiden Fällen taucht der Eintrag danach nicht mehr im Reminder
+   * auf. Kein Verweis, nur Flag. */
+  staleLeadHandled?: boolean
 }
 
 export interface DailyActivityEntry {

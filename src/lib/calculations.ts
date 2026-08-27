@@ -317,14 +317,14 @@ export const LOST_LEAD_STALE_MONTHS = 3
 
 /**
  * "Lost"-Einträge, deren Termin mind. `months` Kalendermonate zurückliegt und die noch
- * nicht erneut kontaktiert wurden - Kandidaten für einen erneuten Reaktivierungs-Anruf.
- * Erwartet die VOLLSTÄNDIGE, ungefilterte Pipeline (nicht nur den gewählten Monat), da der
- * Reminder unabhängig vom gewählten Monat gilt. Älteste zuerst.
+ * nicht im Reminder behandelt wurden ("→ Neuer Termin" oder "Weiterhin Lost") - Kandidaten
+ * für eine Reminder-Zeile. Erwartet die VOLLSTÄNDIGE, ungefilterte Pipeline (nicht nur den
+ * gewählten Monat), da der Reminder unabhängig vom gewählten Monat gilt. Älteste zuerst.
  */
 export function getStaleLostLeads(pipeline: PipelineEntry[], months: number, today: Date = new Date()): PipelineEntry[] {
   const threshold = todayISODate(new Date(today.getFullYear(), today.getMonth() - months, today.getDate()))
   return pipeline
-    .filter((entry) => entry.label === 'Lost' && !entry.reachedOutAgain && entry.date < threshold)
+    .filter((entry) => entry.label === 'Lost' && !entry.staleLeadHandled && entry.date < threshold)
     .sort((a, b) => a.date.localeCompare(b.date))
 }
 

@@ -24,6 +24,7 @@ interface Props {
   onChange: (pipeline: PipelineEntry[]) => void
   onCreateDeal: (entry: PipelineEntry, revenue: number) => void
   onReachOutToLostLead: (entry: PipelineEntry, date: string) => void
+  onDismissStaleLead: (entry: PipelineEntry) => void
 }
 
 type Section = 'open' | 'noShow' | 'closed'
@@ -34,7 +35,14 @@ function defaultFollowUpDate(): string {
   return todayISODate(new Date(Date.now() + FOLLOW_UP_DEFAULT_OFFSET_DAYS * 24 * 60 * 60 * 1000))
 }
 
-export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateDeal, onReachOutToLostLead }: Props) {
+export function PipelinePanel({
+  pipeline,
+  allMonthsPipeline,
+  onChange,
+  onCreateDeal,
+  onReachOutToLostLead,
+  onDismissStaleLead,
+}: Props) {
   const [dealRevenueDrafts, setDealRevenueDrafts] = useState<Record<string, number>>({})
   const [closingEntryIds, setClosingEntryIds] = useState<Set<string>>(new Set())
   const [reactivatingEntryIds, setReactivatingEntryIds] = useState<Set<string>>(new Set())
@@ -45,7 +53,7 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
   const [reachOutDateDrafts, setReachOutDateDrafts] = useState<Record<string, string>>({})
 
   // Datum eines bestehenden Eintrags wird erst nach Bestätigen übernommen (analog zu
-  // Reaktivieren/Folgetermin/Erneut kontaktieren) - verhindert, dass beim Navigieren im
+  // Reaktivieren/Folgetermin/Neuer Termin) - verhindert, dass beim Navigieren im
   // nativen Kalender auf dem Handy versehentlich schon ein Datum übernommen wird, bevor
   // bewusst ein Tag ausgewählt wurde. Gilt für alle drei Tabellen, auf allen Bildschirmgrößen.
   const [editingDateEntryIds, setEditingDateEntryIds] = useState<Set<string>>(new Set())
@@ -214,7 +222,7 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
     // Eigene Prop statt onChange: der alte Lost-Eintrag liegt i.d.R. in einem anderen
     // Monat als dem gerade gewählten und ist in der monatsgefilterten `pipeline`-Prop
     // nicht enthalten - onReachOutToLostLead arbeitet in App.tsx auf der vollen Liste.
-    // Label/Datum des alten Eintrags bleiben unverändert, nur das reachedOutAgain-Flag
+    // Label/Datum des alten Eintrags bleiben unverändert, nur das staleLeadHandled-Flag
     // wird gesetzt (verhindert erneutes Auftauchen im Reminder, keine Verfälschung der
     // damaligen Monats-Statistik).
     onReachOutToLostLead(entry, date)
@@ -456,9 +464,14 @@ export function PipelinePanel({ pipeline, allMonthsPipeline, onChange, onCreateD
                           </PillButton>
                         </div>
                       ) : (
-                        <PillButton type="button" onClick={() => startReachOut(entry.id)}>
-                          → Erneut kontaktieren
-                        </PillButton>
+                        <div className="pipeline-deal-action">
+                          <PillButton type="button" onClick={() => startReachOut(entry.id)}>
+                            → Neuer Termin
+                          </PillButton>
+                          <PillButton variant="ghost" type="button" onClick={() => onDismissStaleLead(entry)}>
+                            Weiterhin Lost
+                          </PillButton>
+                        </div>
                       )}
                     </td>
                   </tr>

@@ -153,19 +153,29 @@ function App() {
       pipeline: prev.pipeline.map((p) => (p.id === entry.id ? { ...p, label: 'Closed Deal', dealCreated: true } : p)),
     }))
 
-  // Erneuter Kontaktversuch bei einem alten Lost-Lead: neuer, unabhängiger Discovery-Call-
-  // Eintrag + der alte Lost-Eintrag wird als "reachedOutAgain" markiert (Label/Datum bleiben
-  // unverändert), in einem Update. Arbeitet bewusst auf der VOLLEN prev.pipeline statt über
-  // die monatsgefilterte onChange-Prop, da der alte Lost-Eintrag i.d.R. in einem anderen
-  // Monat liegt als dem gerade angezeigten und über die gefilterte Teilmenge nicht
-  // zuverlässig gefunden/markiert werden könnte.
+  // Erneuter Kontaktversuch bei einem alten Lost-Lead ("→ Neuer Termin"): neuer,
+  // unabhängiger Discovery-Call-Eintrag + der alte Lost-Eintrag wird als "staleLeadHandled"
+  // markiert (Label/Datum bleiben unverändert), in einem Update. Arbeitet bewusst auf der
+  // VOLLEN prev.pipeline statt über die monatsgefilterte onChange-Prop, da der alte Lost-
+  // Eintrag i.d.R. in einem anderen Monat liegt als dem gerade angezeigten und über die
+  // gefilterte Teilmenge nicht zuverlässig gefunden/markiert werden könnte.
   const reachOutToLostLead = (entry: PipelineEntry, date: string) =>
     update((prev) => ({
       ...prev,
       pipeline: [
-        ...prev.pipeline.map((p) => (p.id === entry.id ? { ...p, reachedOutAgain: true } : p)),
+        ...prev.pipeline.map((p) => (p.id === entry.id ? { ...p, staleLeadHandled: true } : p)),
         { id: newId(), date, label: 'Discovery Call', company: entry.company ?? '' },
       ],
+    }))
+
+  // "Weiterhin Lost": Lead soll nicht mehr im Reminder auftauchen, ohne dass ein neuer
+  // Termin angelegt wird - nur das staleLeadHandled-Flag wird gesetzt, sonst bleibt der
+  // Eintrag unverändert. Gleicher Grund wie bei reachOutToLostLead für die volle
+  // prev.pipeline statt der monatsgefilterten onChange-Prop.
+  const dismissStaleLead = (entry: PipelineEntry) =>
+    update((prev) => ({
+      ...prev,
+      pipeline: prev.pipeline.map((p) => (p.id === entry.id ? { ...p, staleLeadHandled: true } : p)),
     }))
 
   const updateDailyActivity = (monthDailyActivity: DailyActivityEntry[]) =>
@@ -239,6 +249,7 @@ function App() {
           onChange={updatePipeline}
           onCreateDeal={closeDealFromPipelineEntry}
           onReachOutToLostLead={reachOutToLostLead}
+          onDismissStaleLead={dismissStaleLead}
         />
         <DealList deals={derived.monthDeals} onChange={updateDeals} />
       </main>
