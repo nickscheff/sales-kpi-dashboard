@@ -11,6 +11,7 @@ import {
   getPipelineSummary,
   getStaleLostLeads,
   groupOpenPipelineByDate,
+  isRealCurrentMonth,
   todayISODate,
 } from '../lib/calculations'
 import { formatFullDate, formatShortDate } from '../lib/format'
@@ -21,6 +22,9 @@ interface Props {
   pipeline: PipelineEntry[]
   /** Vollständige, ungefilterte Pipeline (alle Monate) - für den Lost-Lead-Reminder. */
   allMonthsPipeline: PipelineEntry[]
+  /** Aktuell im Monats-Schalter gewählter Monat - bestimmt den Klapp-Start-Zustand des
+   * monatsbezogenen Hauptinhalts (siehe monthContentOpen weiter unten). */
+  monthYear: string
   onChange: (pipeline: PipelineEntry[]) => void
   onCreateDeal: (entry: PipelineEntry, revenue: number) => void
   onReachOutToLostLead: (entry: PipelineEntry, date: string) => void
@@ -38,6 +42,7 @@ function defaultFollowUpDate(): string {
 export function PipelinePanel({
   pipeline,
   allMonthsPipeline,
+  monthYear,
   onChange,
   onCreateDeal,
   onReachOutToLostLead,
@@ -103,6 +108,20 @@ export function PipelinePanel({
   if (hasPendingClosedDeal !== prevHasPendingClosedDeal) {
     setPrevHasPendingClosedDeal(hasPendingClosedDeal)
     if (hasPendingClosedDeal) setAbgeschlossenOpen(true)
+  }
+
+  // Monatsbezogener Hauptinhalt (Offen/No-Show-Cancel/Abgeschlossen, ohne den Lost-Lead-
+  // Reminder - der zeigt Leads aus allen Monaten und bleibt davon unberührt) ist nur im
+  // echten aktuellen Kalendermonat standardmäßig ausgeklappt. State während des Renderns
+  // anpassen (gleiches Muster wie oben bei abgeschlossenOpen): bei jedem Monatswechsel wird
+  // der Klapp-Zustand auf den Standard für den neuen Monat zurückgesetzt - das ist nur der
+  // Startzustand, ein manuelles Umschalten bleibt bis zum nächsten Monatswechsel bestehen.
+  const isCurrentMonth = isRealCurrentMonth(monthYear)
+  const [monthContentOpen, setMonthContentOpen] = useState(isCurrentMonth)
+  const [prevMonthYear, setPrevMonthYear] = useState(monthYear)
+  if (monthYear !== prevMonthYear) {
+    setPrevMonthYear(monthYear)
+    setMonthContentOpen(isCurrentMonth)
   }
 
   const updateEntry = (id: string, patch: Partial<PipelineEntry>) =>
@@ -482,137 +501,159 @@ export function PipelinePanel({
         </div>
       )}
 
-      <div className="pipeline-summary">
-        <button
-          type="button"
-          className={`pipeline-chip${openLabelFilter === null ? ' pipeline-chip-active' : ''}`}
-          onClick={resetOpenFilter}
-        >
-          Alle
-        </button>
-        {openSummary.map((item) => (
-          <button
-            type="button"
-            className={`pipeline-chip${openLabelFilter === item.label ? ' pipeline-chip-active' : ''}`}
-            key={item.label}
-            onClick={() => toggleOpenFilter(item.label)}
-          >
-            {item.count} {item.label} offen
-          </button>
-        ))}
-      </div>
-
-      <div className="table-scroll">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Datum</th>
-              <th>Firma</th>
-              <th>Label</th>
-              <th>Aktion</th>
-              <th aria-hidden="true"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {openGroups.map((bucket) => (
-              <Fragment key={bucket.group}>
-                <tr className="table-group-row">
-                  <td colSpan={5} className="table-group-heading">
-                    {bucket.label}
-                  </td>
-                </tr>
-                {bucket.entries.map((entry) => renderRow(entry, 'open'))}
-              </Fragment>
-            ))}
-            {open.length === 0 && (
-              <tr>
-                <td colSpan={5} className="table-empty">
-                  Keine offenen Termine in diesem Monat.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <PillButton type="button" onClick={add}>
-        + Termin hinzufügen
-      </PillButton>
-
-      <h3 className="pipeline-section-title">No-Show / Cancel ({noShowAll.length})</h3>
-      <div className="table-scroll">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Datum</th>
-              <th>Firma</th>
-              <th>Label</th>
-              <th>Aktion</th>
-              <th aria-hidden="true"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {noShow.map((entry) => renderRow(entry, 'noShow'))}
-            {noShow.length === 0 && (
-              <tr>
-                <td colSpan={5} className="table-empty">
-                  Keine No-Show/Cancel-Termine in diesem Monat.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="pipeline-summary pipeline-summary-closed">
-        <button
-          type="button"
-          className={`pipeline-chip${closedLabelFilter === null ? ' pipeline-chip-active' : ''}`}
-          onClick={resetClosedFilter}
-        >
-          Alle
-        </button>
-        {closedSummary.map((item) => (
-          <button
-            type="button"
-            className={`pipeline-chip${closedLabelFilter === item.label ? ' pipeline-chip-active' : ''}`}
-            key={item.label}
-            onClick={() => toggleClosedFilter(item.label)}
-          >
-            {item.count} {item.label}
-          </button>
-        ))}
-      </div>
-
-      <Collapsible
-        title={`Abgeschlossen (${closedAll.length})`}
-        open={abgeschlossenOpen}
-        onOpenChange={setAbgeschlossenOpen}
-        className="pipeline-closed"
+      <button
+        type="button"
+        className="pipeline-month-toggle"
+        onClick={() => setMonthContentOpen((prev) => !prev)}
+        aria-expanded={monthContentOpen}
       >
-        <div className="table-scroll">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Datum</th>
-                <th>Firma</th>
-                <th>Label</th>
-                <th>Aktion</th>
-                <th aria-hidden="true"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {closed.map((entry) => renderRow(entry, 'closed'))}
-              {closed.length === 0 && (
+        <span className="pipeline-month-toggle-chevron" aria-hidden="true">
+          {monthContentOpen ? '▾' : '▸'}
+        </span>
+        {monthContentOpen ? (
+          <span className="pipeline-month-toggle-label">Termine dieses Monats</span>
+        ) : (
+          <span className="pipeline-month-toggle-label">
+            {openAll.length} offen · {noShowAll.length} No-Show/Cancel · {closedAll.length} abgeschlossen
+          </span>
+        )}
+      </button>
+
+      {monthContentOpen && (
+        <>
+          <div className="pipeline-summary">
+            <button
+              type="button"
+              className={`pipeline-chip${openLabelFilter === null ? ' pipeline-chip-active' : ''}`}
+              onClick={resetOpenFilter}
+            >
+              Alle
+            </button>
+            {openSummary.map((item) => (
+              <button
+                type="button"
+                className={`pipeline-chip${openLabelFilter === item.label ? ' pipeline-chip-active' : ''}`}
+                key={item.label}
+                onClick={() => toggleOpenFilter(item.label)}
+              >
+                {item.count} {item.label} offen
+              </button>
+            ))}
+          </div>
+
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
                 <tr>
-                  <td colSpan={5} className="table-empty">
-                    Noch keine abgeschlossenen Termine in diesem Monat.
-                  </td>
+                  <th>Datum</th>
+                  <th>Firma</th>
+                  <th>Label</th>
+                  <th>Aktion</th>
+                  <th aria-hidden="true"></th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Collapsible>
+              </thead>
+              <tbody>
+                {openGroups.map((bucket) => (
+                  <Fragment key={bucket.group}>
+                    <tr className="table-group-row">
+                      <td colSpan={5} className="table-group-heading">
+                        {bucket.label}
+                      </td>
+                    </tr>
+                    {bucket.entries.map((entry) => renderRow(entry, 'open'))}
+                  </Fragment>
+                ))}
+                {open.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="table-empty">
+                      Keine offenen Termine in diesem Monat.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <PillButton type="button" onClick={add}>
+            + Termin hinzufügen
+          </PillButton>
+
+          <h3 className="pipeline-section-title">No-Show / Cancel ({noShowAll.length})</h3>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Datum</th>
+                  <th>Firma</th>
+                  <th>Label</th>
+                  <th>Aktion</th>
+                  <th aria-hidden="true"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {noShow.map((entry) => renderRow(entry, 'noShow'))}
+                {noShow.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="table-empty">
+                      Keine No-Show/Cancel-Termine in diesem Monat.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="pipeline-summary pipeline-summary-closed">
+            <button
+              type="button"
+              className={`pipeline-chip${closedLabelFilter === null ? ' pipeline-chip-active' : ''}`}
+              onClick={resetClosedFilter}
+            >
+              Alle
+            </button>
+            {closedSummary.map((item) => (
+              <button
+                type="button"
+                className={`pipeline-chip${closedLabelFilter === item.label ? ' pipeline-chip-active' : ''}`}
+                key={item.label}
+                onClick={() => toggleClosedFilter(item.label)}
+              >
+                {item.count} {item.label}
+              </button>
+            ))}
+          </div>
+
+          <Collapsible
+            title={`Abgeschlossen (${closedAll.length})`}
+            open={abgeschlossenOpen}
+            onOpenChange={setAbgeschlossenOpen}
+            className="pipeline-closed"
+          >
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Datum</th>
+                    <th>Firma</th>
+                    <th>Label</th>
+                    <th>Aktion</th>
+                    <th aria-hidden="true"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {closed.map((entry) => renderRow(entry, 'closed'))}
+                  {closed.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="table-empty">
+                        Noch keine abgeschlossenen Termine in diesem Monat.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Collapsible>
+        </>
+      )}
     </Card>
   )
 }

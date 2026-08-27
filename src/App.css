@@ -902,6 +902,39 @@
   margin: 18px 0 10px;
 }
 
+/* Klapp-Umschalter für den monatsbezogenen Hauptinhalt (Offen/No-Show-Cancel/
+   Abgeschlossen) - im eingeklappten Zustand ersetzt die kompakte Zahlen-Zeile die volle
+   Tabellen-Darstellung. Der Lost-Lead-Reminder oberhalb ist bewusst kein Teil davon. */
+.pipeline-month-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 8px 4px;
+  margin-bottom: 4px;
+  text-align: left;
+  color: var(--text-muted);
+  font: inherit;
+}
+
+.pipeline-month-toggle:hover {
+  color: var(--text);
+}
+
+.pipeline-month-toggle-chevron {
+  color: var(--accent);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.pipeline-month-toggle-label {
+  font-size: 13px;
+}
+
 /* Pace status */
 
 .pace-level-picker {

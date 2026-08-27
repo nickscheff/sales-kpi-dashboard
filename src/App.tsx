@@ -246,6 +246,7 @@ function App() {
         <PipelinePanel
           pipeline={derived.monthPipeline}
           allMonthsPipeline={data.pipeline}
+          monthYear={derived.monthYear}
           onChange={updatePipeline}
           onCreateDeal={closeDealFromPipelineEntry}
           onReachOutToLostLead={reachOutToLostLead}
