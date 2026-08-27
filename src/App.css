@@ -371,28 +371,31 @@
     width: 100%;
   }
 
-  /* iOS-Safari-Eigenheit: das native Datumsfeld ignoriert width:100% teilweise und ragt
-     sonst über den Kartenrand hinaus - min-width:0 erlaubt dem Feld, unter seine sonst
+  /* iOS-Safari-Eigenheit: native Datums-/Monatsfelder ignorieren width:100% teilweise und
+     ragen sonst über den Kartenrand hinaus - min-width:0 erlaubt dem Feld, unter seine sonst
      erzwungene Eigenbreite zu schrumpfen, max-width:100% deckelt es hart auf die Karte. */
-  .table td input[type='date'] {
+  .table td input[type='date'],
+  .table td input[type='month'] {
     min-width: 0;
     max-width: 100%;
   }
 
-  /* iOS Safari respektiert width:100% für das Datumsfeld offenbar auch bei der reinen
+  /* iOS Safari respektiert width:100% für Datums-/Monatsfelder offenbar auch bei der reinen
      Box-Größe nicht zuverlässig (nicht nur beim gezeichneten Inhalt) - die Box blieb
-     dadurch sichtbar breiter als Firma/Label, obwohl beide dieselbe width:100%-Regel
+     dadurch sichtbar breiter als Nachbarfelder, obwohl alle dieselbe width:100%-Regel
      nutzen. Ein umschließender <div> (kein natives Form-Element, davon nicht betroffen)
-     respektiert width:100% zuverlässig und schneidet das Datumsfeld hart auf exakt diese
-     Breite zu - dadurch immer gleich breit wie die Nachbarfelder, unabhängig davon, wie
-     breit iOS das Feld selbst rendern will. */
+     respektiert width:100% zuverlässig und schneidet das Feld hart auf exakt diese Breite
+     zu - dadurch immer gleich breit wie die Nachbarfelder, unabhängig davon, wie breit iOS
+     das Feld selbst rendern will. Gilt für type="date" (Termin-Pipeline/Deal-Liste) und
+     type="month" (Monats-Historie/Monats-Einstellungen) gleichermaßen. */
   .pipeline-date-field {
     width: 100%;
     overflow: hidden;
     border-radius: 8px;
   }
 
-  .pipeline-date-field input[type='date'] {
+  .pipeline-date-field input[type='date'],
+  .pipeline-date-field input[type='month'] {
     width: 100%;
   }
 

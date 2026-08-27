@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { Card } from './ui/Card'
 import { NumberField } from './ui/Field'
+import { PillButton } from './ui/PillButton'
+import { formatMonthYearLabel } from '../lib/format'
 import type { Settings } from '../types'
 
 interface Props {
@@ -13,16 +16,45 @@ export function SettingsPanel({ monthYear, settings, onChangeMonthYear, onChange
   const set = <K extends keyof Settings>(key: K, value: number) =>
     onChangeSettings({ ...settings, [key]: value })
 
+  // Monat wird erst nach Bestätigen übernommen (analog zum Datumsfeld in Termin-Pipeline/
+  // Deal-Liste) - selbes Problem: das native Monatsfeld zeigt sonst inkonsistent formatierte
+  // Werte (z.B. englische Monatsnamen), und ein versehentliches Übernehmen beim Navigieren im
+  // nativen Picker würde hier sofort den gesamten betrachteten Monat wechseln.
+  const [editingMonth, setEditingMonth] = useState(false)
+  const [monthDraft, setMonthDraft] = useState(monthYear)
+
+  const startEditMonth = () => {
+    setMonthDraft(monthYear)
+    setEditingMonth(true)
+  }
+  const cancelEditMonth = () => setEditingMonth(false)
+  const confirmEditMonth = () => {
+    onChangeMonthYear(monthDraft)
+    setEditingMonth(false)
+  }
+
   return (
     <Card title="Monats-Einstellungen" subtitle="Basis für alle Berechnungen unten" className="span-2">
-      <label className="field">
+      <div className="field">
         <span className="field-label">Monat</span>
-        <input
-          type="month"
-          value={monthYear}
-          onChange={(e) => onChangeMonthYear(e.target.value)}
-        />
-      </label>
+        {editingMonth ? (
+          <div className="pipeline-deal-action">
+            <div className="pipeline-date-field">
+              <input type="month" value={monthDraft} onChange={(e) => setMonthDraft(e.target.value)} />
+            </div>
+            <PillButton type="button" onClick={confirmEditMonth}>
+              Bestätigen
+            </PillButton>
+            <PillButton variant="ghost" type="button" onClick={cancelEditMonth}>
+              Abbrechen
+            </PillButton>
+          </div>
+        ) : (
+          <PillButton variant="muted" type="button" onClick={startEditMonth}>
+            {formatMonthYearLabel(monthYear)} ✎
+          </PillButton>
+        )}
+      </div>
       <div className="field-grid">
         <NumberField label="Monatsziel" value={settings.monthlyTarget} onChange={(v) => set('monthlyTarget', v)} suffix="€" step={500} />
         <NumberField label="Grundvergütung" value={settings.baseSalary} onChange={(v) => set('baseSalary', v)} suffix="€" step={100} />
