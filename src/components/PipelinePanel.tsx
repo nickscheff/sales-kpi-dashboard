@@ -214,9 +214,14 @@ export function PipelinePanel({
   }
   const confirmPlanFollowUp = (entry: PipelineEntry) => {
     const date = followUpDateDrafts[entry.id] ?? defaultFollowUpDate()
-    // Ursprungseintrag bleibt unverändert (repräsentiert weiterhin den bereits
-    // stattgefundenen Termin) - neuer, unabhängiger Eintrag für den Folgetermin.
-    onChange([...pipeline, { id: newId(), date, label: 'Follow-Up Call', company: entry.company }])
+    // Bestehenden Eintrag direkt auf den Folgetermin umschreiben statt einen zweiten,
+    // unabhängigen Eintrag anzulegen - sonst bliebe der ursprüngliche Discovery-/Follow-Up-
+    // Call-Eintrag unverändert (mit seinem alten Datum) zusätzlich in "Offen" liegen, obwohl
+    // er bereits zu diesem Folgetermin geführt hat (Dopplung im CRM). Gleiches Muster wie bei
+    // confirmReactivate. Bewusst in Kauf genommen: der ursprünglich bereits gehaltene Termin
+    // zählt danach nicht mehr rückwirkend in "Durchgeführte Termine" (Soll-Tempo), da dessen
+    // Datum überschrieben wird - kein separater Verlaufseintrag dafür vorgesehen.
+    updateEntry(entry.id, { label: 'Follow-Up Call', date })
     cancelPlanFollowUp(entry.id)
   }
 
