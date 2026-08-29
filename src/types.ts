@@ -59,6 +59,12 @@ export interface PipelineEntry {
    * kein neuer Termin)? In beiden Fällen taucht der Eintrag danach nicht mehr im Reminder
    * auf. Kein Verweis, nur Flag. */
   staleLeadHandled?: boolean
+  /** Wurde aus diesem (bereits stattgefundenen) Termin bereits ein Folgetermin geplant? Der
+   * Eintrag bleibt dabei unverändert an seinem tatsächlichen Datum stehen (zählt weiterhin
+   * korrekt zu "Durchgeführte Termine" in dem Monat, in dem er wirklich stattfand), taucht
+   * aber nicht mehr in "Offen" auf - sonst läge er dort neben dem neuen Folgetermin-Eintrag
+   * doppelt. Kein Verweis auf den neuen Eintrag, nur Flag. */
+  followUpPlanned?: boolean
 }
 
 export interface DailyActivityEntry {

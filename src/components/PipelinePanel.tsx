@@ -80,11 +80,17 @@ export function PipelinePanel({
   const [openLabelFilter, setOpenLabelFilter] = useState<PipelineLabel | null>(null)
   const [closedLabelFilter, setClosedLabelFilter] = useState<PipelineLabel | null>(null)
 
-  const summary = getPipelineSummary(pipeline)
+  // Einträge mit bereits geplantem Folgetermin (siehe confirmPlanFollowUp) zählen nicht mehr
+  // als "offen" - sie bleiben aber unverändert Teil von `pipeline` (u.a. für "Durchgeführte
+  // Termine" im Soll-Tempo, das unabhängig von dieser Anzeige-Filterung weiterhin auf Basis
+  // von Label+Datum zählt).
+  const summary = getPipelineSummary(pipeline.filter((entry) => !entry.followUpPlanned))
   const openSummary = summary.filter((item) => OPEN_PIPELINE_LABELS.includes(item.label))
   const closedSummary = summary.filter((item) => CLOSED_PIPELINE_LABELS.includes(item.label))
 
-  const openAll = pipeline.filter((entry) => OPEN_PIPELINE_LABELS.includes(entry.label)).sort((a, b) => a.date.localeCompare(b.date))
+  const openAll = pipeline
+    .filter((entry) => OPEN_PIPELINE_LABELS.includes(entry.label) && !entry.followUpPlanned)
+    .sort((a, b) => a.date.localeCompare(b.date))
   const noShowAll = pipeline
     .filter((entry) => REACTIVATABLE_PIPELINE_LABELS.includes(entry.label))
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -214,14 +220,15 @@ export function PipelinePanel({
   }
   const confirmPlanFollowUp = (entry: PipelineEntry) => {
     const date = followUpDateDrafts[entry.id] ?? defaultFollowUpDate()
-    // Bestehenden Eintrag direkt auf den Folgetermin umschreiben statt einen zweiten,
-    // unabhängigen Eintrag anzulegen - sonst bliebe der ursprüngliche Discovery-/Follow-Up-
-    // Call-Eintrag unverändert (mit seinem alten Datum) zusätzlich in "Offen" liegen, obwohl
-    // er bereits zu diesem Folgetermin geführt hat (Dopplung im CRM). Gleiches Muster wie bei
-    // confirmReactivate. Bewusst in Kauf genommen: der ursprünglich bereits gehaltene Termin
-    // zählt danach nicht mehr rückwirkend in "Durchgeführte Termine" (Soll-Tempo), da dessen
-    // Datum überschrieben wird - kein separater Verlaufseintrag dafür vorgesehen.
-    updateEntry(entry.id, { label: 'Follow-Up Call', date })
+    // Ursprungseintrag bleibt an seinem tatsächlichen Datum stehen (zählt dadurch weiterhin
+    // korrekt zu "Durchgeführte Termine" in dem Monat, in dem er wirklich stattfand) - wird
+    // aber als followUpPlanned markiert, damit er nicht mehr in "Offen" auftaucht (sonst
+    // Dopplung neben dem neuen Folgetermin-Eintrag, siehe openAll-Filter oben). Neuer,
+    // unabhängiger Eintrag für den Folgetermin selbst, wie zuvor.
+    onChange([
+      ...pipeline.map((p) => (p.id === entry.id ? { ...p, followUpPlanned: true } : p)),
+      { id: newId(), date, label: 'Follow-Up Call', company: entry.company },
+    ])
     cancelPlanFollowUp(entry.id)
   }
 
