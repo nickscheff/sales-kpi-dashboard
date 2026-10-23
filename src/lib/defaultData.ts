@@ -12,6 +12,9 @@ function currentQuarterLabel(): string {
   return `${now.getFullYear()}-Q${quarter}`
 }
 
+export const DEFAULT_QUARTER_TARGET = 150000
+export const DEFAULT_YEAR_TARGET = 600000
+
 export const DEFAULT_SETTINGS: Settings = {
   monthlyTarget: 50000,
   baseSalary: 3000,
@@ -30,8 +33,8 @@ export function createDefaultData(): DashboardData {
     deals: [],
     pipeline: [],
     dailyActivity: [],
-    quarterTarget: { quarterLabel: currentQuarterLabel(), target: 150000 },
-    yearTarget: { year: new Date().getFullYear(), target: 600000 },
+    quarterTargets: { [currentQuarterLabel()]: DEFAULT_QUARTER_TARGET },
+    yearTargets: { [String(new Date().getFullYear())]: DEFAULT_YEAR_TARGET },
     history: [],
   }
 }
@@ -50,6 +53,48 @@ export function getSettingsForMonth(settingsByMonth: Record<string, Settings>, m
     .sort()
   const closest = previousKeys[previousKeys.length - 1]
   return closest ? settingsByMonth[closest] : DEFAULT_SETTINGS
+}
+
+/**
+ * Ziel für ein Quartal ("YYYY-Qn") bzw. Jahr ("YYYY"): exakter Treffer falls vorhanden, sonst
+ * das Ziel des chronologisch nächstgelegenen FRÜHEREN Eintrags (String-Vergleich ist für beide
+ * Key-Formate chronologisch korrekt), sonst `fallback`. Rein lesend - erst eine Änderung über
+ * `updateQuarterTarget`/`updateYearTarget` in App.tsx legt einen eigenen Eintrag an (gleiches
+ * Muster wie `getSettingsForMonth`).
+ */
+export function getPeriodTarget(targets: Record<string, number>, key: string, fallback: number): number {
+  if (key in targets) return targets[key]
+  const previousKeys = Object.keys(targets)
+    .filter((k) => k < key)
+    .sort()
+  const closest = previousKeys[previousKeys.length - 1]
+  return closest ? targets[closest] : fallback
+}
+
+/**
+ * Quartals-/Jahresziele aus geladenen Daten: aktuelles Format (Maps) wird übernommen, das
+ * frühere Einzelobjekt-Format (`quarterTarget {quarterLabel, target}` bzw.
+ * `yearTarget {year, target}`) wird verlustfrei in einen Map-Eintrag überführt.
+ */
+function normalizeTargets(raw: Record<string, unknown>, base: DashboardData) {
+  const quarterTargets: Record<string, number> = {}
+  const yearTargets: Record<string, number> = {}
+
+  const quarterMap = raw.quarterTargets as Record<string, number> | undefined
+  const legacyQuarter = raw.quarterTarget as { quarterLabel?: string; target?: number } | undefined
+  if (quarterMap && typeof quarterMap === 'object') Object.assign(quarterTargets, quarterMap)
+  else if (legacyQuarter?.quarterLabel && typeof legacyQuarter.target === 'number')
+    quarterTargets[legacyQuarter.quarterLabel] = legacyQuarter.target
+  else Object.assign(quarterTargets, base.quarterTargets)
+
+  const yearMap = raw.yearTargets as Record<string, number> | undefined
+  const legacyYear = raw.yearTarget as { year?: number; target?: number } | undefined
+  if (yearMap && typeof yearMap === 'object') Object.assign(yearTargets, yearMap)
+  else if (typeof legacyYear?.year === 'number' && typeof legacyYear.target === 'number')
+    yearTargets[String(legacyYear.year)] = legacyYear.target
+  else Object.assign(yearTargets, base.yearTargets)
+
+  return { quarterTargets, yearTargets }
 }
 
 /**
@@ -105,8 +150,7 @@ export function normalizeDashboardData(loaded: unknown): DashboardData {
       deals,
       pipeline,
       dailyActivity,
-      quarterTarget: (raw.quarterTarget as DashboardData['quarterTarget']) ?? base.quarterTarget,
-      yearTarget: (raw.yearTarget as DashboardData['yearTarget']) ?? base.yearTarget,
+      ...normalizeTargets(raw, base),
       history: (raw.history as DashboardData['history']) ?? [],
     }
   }
@@ -127,8 +171,7 @@ export function normalizeDashboardData(loaded: unknown): DashboardData {
     deals: (raw.deals as DashboardData['deals']) ?? [],
     pipeline: (raw.pipeline as DashboardData['pipeline']) ?? [],
     dailyActivity: (raw.dailyActivity as DashboardData['dailyActivity']) ?? [],
-    quarterTarget: (raw.quarterTarget as DashboardData['quarterTarget']) ?? base.quarterTarget,
-    yearTarget: (raw.yearTarget as DashboardData['yearTarget']) ?? base.yearTarget,
+    ...normalizeTargets(raw, base),
     history: (raw.history as DashboardData['history']) ?? [],
   }
 }

@@ -49,3 +49,9 @@ export function formatFullDate(iso: string): string {
   const [year, month, day] = iso.split('-')
   return `${day}.${month}.${year}`
 }
+
+/** "2026-Q4" -> "Q4 2026". */
+export function formatQuarterLabel(quarterLabel: string): string {
+  const [year, quarter] = quarterLabel.split('-')
+  return `${quarter} ${year}`
+}

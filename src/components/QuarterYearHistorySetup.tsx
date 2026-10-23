@@ -1,11 +1,13 @@
 import { Collapsible } from './ui/Collapsible'
 import { HistoryPanel } from './HistoryPanel'
 import { QuarterYearTargets } from './QuarterYearTargets'
-import type { HistoryEntry, QuarterTarget, YearTarget } from '../types'
+import type { HistoryEntry } from '../types'
 
 interface Props {
-  quarterTarget: QuarterTarget
-  yearTarget: YearTarget
+  quarterLabel: string
+  quarterTarget: number
+  year: number
+  yearTarget: number
   onChangeQuarterTarget: (target: number) => void
   onChangeYearTarget: (target: number) => void
   history: HistoryEntry[]
@@ -13,7 +15,9 @@ interface Props {
 }
 
 export function QuarterYearHistorySetup({
+  quarterLabel,
   quarterTarget,
+  year,
   yearTarget,
   onChangeQuarterTarget,
   onChangeYearTarget,
@@ -28,7 +32,9 @@ export function QuarterYearHistorySetup({
     >
       <div className="app-grid">
         <QuarterYearTargets
+          quarterLabel={quarterLabel}
           quarterTarget={quarterTarget}
+          year={year}
           yearTarget={yearTarget}
           onChangeQuarterTarget={onChangeQuarterTarget}
           onChangeYearTarget={onChangeYearTarget}

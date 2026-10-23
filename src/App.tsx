@@ -26,9 +26,17 @@ import {
   getYearSum,
   isInMonth,
   isRealCurrentMonth,
+  monthYearToQuarterLabel,
+  monthYearToYear,
   todayISODate,
 } from './lib/calculations'
-import { getSettingsForMonth } from './lib/defaultData'
+import {
+  DEFAULT_QUARTER_TARGET,
+  DEFAULT_YEAR_TARGET,
+  getPeriodTarget,
+  getSettingsForMonth,
+} from './lib/defaultData'
+import { formatQuarterLabel } from './lib/format'
 import { newId } from './lib/id'
 import { useDashboardData } from './state/useDashboardData'
 import type { DailyActivityEntry, Deal, HistoryEntry, PipelineEntry, Settings } from './types'
@@ -58,8 +66,15 @@ function App() {
     const missingRevenue = getMissingRevenue(settings.monthlyTarget, actualRevenue)
     const record = getRecordStatus(monthlyRevenueMap, monthYear)
 
-    const quarterSum = getQuarterSum(monthlyRevenueMap, data.quarterTarget.quarterLabel, data.quarterTarget.target)
-    const yearSum = getYearSum(monthlyRevenueMap, data.yearTarget.year, data.yearTarget.target)
+    // Quartal/Jahr folgen dem gewählten Monat: pro Quartal/Jahr ein eigenes Ziel, und die
+    // Summen zählen nur die Monate des jeweiligen Zeitraums - im neuen Quartal beginnt der
+    // Quartalsfortschritt dadurch automatisch bei 0, das Jahr läuft ganzjährig durch.
+    const quarterKey = monthYearToQuarterLabel(monthYear)
+    const quarterTarget = getPeriodTarget(data.quarterTargets, quarterKey, DEFAULT_QUARTER_TARGET)
+    const year = monthYearToYear(monthYear)
+    const yearTarget = getPeriodTarget(data.yearTargets, String(year), DEFAULT_YEAR_TARGET)
+    const quarterSum = getQuarterSum(monthlyRevenueMap, quarterKey, quarterTarget)
+    const yearSum = getYearSum(monthlyRevenueMap, year, yearTarget)
 
     const scenarios = getStretchScenarios(settings.monthlyTarget, actualRevenue, settings)
     const funnelItems = scenarios.map((scenario) => ({
@@ -89,7 +104,11 @@ function App() {
       achievementPct,
       missingRevenue,
       record,
+      quarterKey,
+      quarterTarget,
       quarterSum,
+      year,
+      yearTarget,
       yearSum,
       scenarios,
       funnelItems,
@@ -189,11 +208,20 @@ function App() {
 
   const updateHistory = (history: HistoryEntry[]) => update((prev) => ({ ...prev, history }))
 
+  // Schreiben immer unter dem Key des Quartals/Jahres des gerade gewählten Monats - ein
+  // geerbter Wert (siehe getPeriodTarget) wird dadurch bei der ersten Änderung zu einem
+  // eigenen, ab dann unabhängigen Eintrag.
   const updateQuarterTarget = (target: number) =>
-    update((prev) => ({ ...prev, quarterTarget: { ...prev.quarterTarget, target } }))
+    update((prev) => ({
+      ...prev,
+      quarterTargets: { ...prev.quarterTargets, [monthYearToQuarterLabel(prev.selectedMonth.monthYear)]: target },
+    }))
 
   const updateYearTarget = (target: number) =>
-    update((prev) => ({ ...prev, yearTarget: { ...prev.yearTarget, target } }))
+    update((prev) => ({
+      ...prev,
+      yearTargets: { ...prev.yearTargets, [String(monthYearToYear(prev.selectedMonth.monthYear))]: target },
+    }))
 
   return (
     <div className="app-shell">
@@ -221,12 +249,12 @@ function App() {
         <ProgressOverview
           monthActual={derived.actualRevenue}
           monthTarget={derived.settings.monthlyTarget}
-          quarterLabel={data.quarterTarget.quarterLabel}
+          quarterLabel={formatQuarterLabel(derived.quarterKey)}
           quarterActual={derived.quarterSum.sum}
-          quarterTarget={data.quarterTarget.target}
-          yearLabel={data.yearTarget.year}
+          quarterTarget={derived.quarterTarget}
+          yearLabel={derived.year}
           yearActual={derived.yearSum.sum}
-          yearTarget={data.yearTarget.target}
+          yearTarget={derived.yearTarget}
           commission={derived.commission}
           grossTotal={derived.grossTotal}
           commissionTier={derived.commissionTier}
@@ -265,8 +293,10 @@ function App() {
       />
 
       <QuarterYearHistorySetup
-        quarterTarget={data.quarterTarget}
-        yearTarget={data.yearTarget}
+        quarterLabel={formatQuarterLabel(derived.quarterKey)}
+        quarterTarget={derived.quarterTarget}
+        year={derived.year}
+        yearTarget={derived.yearTarget}
         onChangeQuarterTarget={updateQuarterTarget}
         onChangeYearTarget={updateYearTarget}
         history={data.history}

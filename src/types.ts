@@ -26,17 +26,6 @@ export interface HistoryEntry {
   achieved: number
 }
 
-export interface QuarterTarget {
-  /** Format "YYYY-Qn" */
-  quarterLabel: string
-  target: number
-}
-
-export interface YearTarget {
-  year: number
-  target: number
-}
-
 /**
  * 'Discovery Call' / 'Follow-Up Call': Termin fand statt, Ausgang noch offen.
  * 'No-Show/Cancel': Termin hat NICHT stattgefunden.
@@ -91,7 +80,11 @@ export interface DashboardData {
   deals: Deal[]
   pipeline: PipelineEntry[]
   dailyActivity: DailyActivityEntry[]
-  quarterTarget: QuarterTarget
-  yearTarget: YearTarget
+  /** Quartalsziele pro Quartal (Key = "YYYY-Qn"). Fehlt ein Quartal, gilt das Ziel des
+   * chronologisch nächstgelegenen früheren Quartals als editierbarer Startwert (siehe
+   * `getPeriodTarget` in lib/defaultData.ts) - erst eine Änderung legt einen eigenen Eintrag an. */
+  quarterTargets: Record<string, number>
+  /** Jahresziele pro Jahr (Key = "YYYY"), gleiche Vererbungslogik wie `quarterTargets`. */
+  yearTargets: Record<string, number>
   history: HistoryEntry[]
 }
